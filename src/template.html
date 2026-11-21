@@ -490,13 +490,15 @@ function finishUpgrade(acc, u, m, now){
 const BOOSTS = {
   bpot:{name:"Poción de constructor", icon:"mi_bpot", ws:["b"], speed:10, min:60, desc:"Constructores x10 durante 1 hora"},
   appr:{name:"Aprendiz", icon:"h_93000000", ws:["b"], helper:93000000, one:true, min:60, desc:"Una mejora más rápida durante 1 hora"},
+  bite:{name:"Carne del constructor", icon:"mi_bite", ws:["b"], speed:2, min:60, desc:"Constructores x2 durante 1 hora (el aprendiz no se acelera)"},
+  soup:{name:"Sopa del conocimiento", icon:"mi_soup", ws:["l","p"], speed:4, min:60, desc:"Laboratorio y casa de mascotas x4 durante 1 hora"},
   rpot:{name:"Poción de investigación", icon:"mi_rpot", ws:["l"], speed:24, min:60, desc:"Laboratorio x24 durante 1 hora"},
   lass:{name:"Ayudante de laboratorio", icon:"h_93000001", ws:["l"], helper:93000001, one:true, min:60, desc:"La investigación más rápida durante 1 hora"},
   ppot:{name:"Poción de mascotas", icon:"mi_ppot", ws:["p"], speed:24, min:60, desc:"Casa de mascotas x24 durante 1 hora"},
   clock:{name:"Torre del reloj", icon:"clock", ws:["bb","bl"], speed:10, clock:true, desc:"Toda la base del constructor x10"},
   cpot:{name:"Poción de torre del reloj", icon:"mi_cpot", ws:["bb","bl"], speed:10, min:30, desc:"Torre del reloj x10 durante 30 minutos"},
 };
-const BOOSTS_BY_W = {b:["bpot","appr"], l:["rpot","lass"], p:["ppot"], bb:["clock","cpot"], bl:["clock","cpot"]};
+const BOOSTS_BY_W = {b:["bpot","bite","appr"], l:["rpot","soup","lass"], p:["ppot","soup"], bb:["clock","cpot"], bl:["clock","cpot"]};
 function clockMinutes(acc){ const l=maxLvl(acc.inv||{},1000039); return l?12+2*l:14; }
 /* Tiempo que queda tras acelerar a speed x durante durMs */
 function boostedLeft(left, speed, durMs){ return left <= speed*durMs ? left/speed : left-(speed-1)*durMs; }
