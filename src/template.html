@@ -236,6 +236,8 @@ details.loot summary{font-family:var(--btn-font,var(--body));font-size:15px}
 .wup{display:flex;gap:6px;align-items:center}.wup input{width:64px;padding:6px}
 .night-sug{border-color:var(--night)!important}
 .banner.okb{background:var(--ok-soft);color:var(--ok)}
+.toast.act{display:flex;width:min(92%,420px);align-items:center;gap:12px;bottom:max(18px,env(safe-area-inset-bottom))}
+.tbtn{border:0;background:var(--gold);color:#1d1404;font:800 13px var(--body);border-radius:8px;padding:6px 10px;cursor:pointer;white-space:nowrap}
 .ctabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
 .ctab{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:74px;border:1px solid var(--line);background:var(--raise);color:var(--ink);border-radius:12px;padding:6px 8px;cursor:pointer;font:800 12px var(--body)}
 .ctab img,.ctab .ph{width:34px;height:34px;object-fit:contain}
@@ -797,6 +799,12 @@ function checkDone(){
 
 /* ---------- interfaz ---------- */
 function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),3400); }
+function toastAction(msg,label,fn){
+  document.querySelectorAll(".toast").forEach(x=>x.remove());
+  const t=document.createElement("div"); t.className="toast act"; const s=document.createElement("span"); s.textContent=msg; t.appendChild(s);
+  const b=document.createElement("button"); b.textContent=label; b.className="tbtn"; b.onclick=()=>{ t.remove(); fn(); }; t.appendChild(b);
+  document.body.appendChild(t); setTimeout(()=>t.remove(),6000);
+}
 /* Color fijo por cuenta (según el orden en que se añadió) para distinguirlas en el Resumen */
 const ACC_COLORS=["#d9452f","#2f74d9","#2e9a4c","#8f45cf","#d1468a","#178f8f","#d9821a"];
 function accColor(a){ const ids=Object.entries(S.docs).filter(([k,v])=>k.startsWith("acc_")&&v).sort((x,y)=>(x[1].order||0)-(y[1].order||0)).map(([k])=>k); const i=ids.indexOf(a._id); return ACC_COLORS[(i<0?0:i)%ACC_COLORS.length]; }
@@ -832,7 +840,7 @@ function upRow(acc, up, now, showAcc){
   if(left>0){
     if(NATIVE) ntHtml = NOTIF.perm==="granted" ? `<span class="nt ok">Aviso programado</span>` : `<span class="nt warn">Avisos desactivados</span>`;
     else if(al && Math.abs(al.at-up.end)<5*60000) ntHtml=`<span class="nt ok">Aviso de Claude programado</span>`;
-    else ntHtml=`<span class="nt soft">Aviso automático: se programa ~2 h antes</span>`;
+    else ntHtml="";
   }
   const st={k:left>0?"run":"done"};
   if(st.k!=="done") act+=`<button class="btn finish" data-act="finish" data-acc="${esc(acc._id)}" data-u="${esc(up.u)}">${img(finishOptions(up)[0]==="gems"?"mi_gems":FINISH[finishOptions(up)[0]][1],0,"bi")}Terminar ya</button>`;
@@ -1111,11 +1119,11 @@ function renderAcc(acc, now){
     <div class="panel-head"><h2>En curso</h2><span class="muted small">${esc(VIL[vil].name)}</span></div>
     ${upsTabsHtml(acc._id+":"+vil, vil, ups.map(u=>[acc,u]), now, false, acc)}
   </div>
-  ${nightHtml(acc,vil,now)}
-  ${historyHtml(acc,vil)}
-  ${planHtml(acc,vil,now)}
-  ${progressHtml(acc,vil,now)}
   ${catalogHtml(acc,vil)}
+  ${nightHtml(acc,vil,now)}
+  ${planHtml(acc,vil,now)}
+  ${historyHtml(acc,vil)}
+  ${progressHtml(acc,vil,now)}
   ${wallsHtml(acc,vil)}
   ${vil==="h"?equipmentHtml(acc):""}
   ${accSettings(acc)}`;
@@ -1321,21 +1329,19 @@ document.addEventListener("click",ev=>{
     [plan[i],plan[j]]=[plan[j],plan[i]]; saveAcc({...acc, plan}); return;
   }
   if(act==="start"){
+    // Se empieza al momento con el tiempo del juego; si hace falta, se cambia luego con "Ajustar tiempo"
     const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
-    const id=+el.dataset.id, from=+el.dataset.from, c=CAT[id];
-    const b=busy(acc,Date.now()), cap=(acc.cap||{})[c.w]||1;
-    const full=(b[c.w]||0)>=cap, canGob=GOBLIN[c.w]&&vilOf(id)==="h", gobBusy=canGob&&goblinUp(acc,c.w,Date.now());
-    let warn="";
-    if(canGob) warn=`<label class="check gobpick" for="m-gob"><input id="m-gob" type="checkbox" ${full&&!gobBusy?"checked":""} ${gobBusy?"disabled":""}> ${img("goblin_builder",0,"bi")} Usar ${esc(GOBLIN[c.w].toLowerCase())} (pagando gemas)${gobBusy?" · ocupado":""}</label>`;
-    if(full && !(canGob&&!gobBusy)) warn+=`<div class="banner">${esc(WORKER[c.w])}: no te quedan libres según la app. Revisa si alguna mejora ya no está en marcha.</div>`;
-    const cost=catCost(id,from);
-    openUpModal({id, lvl:from+1, title:c.n, sub:esc((from?stepTxt(id,from):"Construcción nueva")+" · "+WORKER_SHORT[c.w])+(cost?` · <span class="cost">${resIcon(c.res)}${fmtNum(cost)}</span>`:"")+"<br>Ajusta la duración si en el juego sale otra.", durMs:effDur(acc,id,from),
-      worker:c.w, confirmLabel:"Empezar mejora", extra:warn,
-      onConfirm:(d)=>{
-        const g=document.getElementById("m-gob"); const useGob=!!(g&&g.checked&&!g.disabled);
-        const r=startUpgrade(acc,id,from,d,Date.now(),undefined,useGob);
-        saveAcc(r.acc); if(r.up.boosted) toast(BOOSTS[r.up.boosted[0]].name+" activo: la mejora acabará antes."); else toast(useGob?"Mejora empezada con el "+GOBLIN[c.w].toLowerCase()+".":"Mejora empezada. Claude te avisará cuando termine.");
-      }});
+    const id=+el.dataset.id, from=+el.dataset.from, c=CAT[id], now=Date.now();
+    const b=busy(acc,now), cap=(acc.cap||{})[c.w]||1;
+    const full=(b[c.w]||0)>=cap, canGob=GOBLIN[c.w]&&vilOf(id)==="h"&&!goblinUp(acc,c.w,now);
+    const useGob=full&&canGob;
+    const r=startUpgrade(acc,id,from,effDur(acc,id,from),now,undefined,useGob);
+    saveAcc(r.acc);
+    let msg=`${c.n} empezada · acaba ${fmtWhen(r.up.end)}`;
+    if(r.up.boosted) msg+=` (con ${BOOSTS[r.up.boosted[0]].name.toLowerCase()})`;
+    if(useGob) msg+=` · con el ${GOBLIN[c.w].toLowerCase()}`;
+    else if(full) msg+=` · ojo: no te quedaban ${WORKER[c.w].toLowerCase()} libres`;
+    toastAction(msg, "Cambiar tiempo", ()=>{ const b2=document.querySelector(`[data-act=adjust][data-u="${r.up.u}"]`); if(b2) b2.click(); });
     return;
   }
   if(act==="adjust"){
