@@ -238,6 +238,9 @@ details.loot summary{font-family:var(--btn-font,var(--body));font-size:15px}
 .banner.okb{background:var(--ok-soft);color:var(--ok)}
 .toast.act{display:flex;width:min(92%,420px);align-items:center;gap:12px;bottom:max(18px,env(safe-area-inset-bottom))}
 .tbtn{border:0;background:var(--gold);color:#1d1404;font:800 13px var(--body);border-radius:8px;padding:6px 10px;cursor:pointer;white-space:nowrap}
+.btn.ham{padding:5px 7px}
+.mrow{display:grid;grid-template-columns:46px 1fr auto;gap:10px;align-items:center;padding:8px;border-radius:12px;background:var(--raise);border:1px solid var(--line)}
+.mrow .nm{font-weight:900} .mrow .sub{font-size:12px;color:var(--muted)}
 .ctabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
 .ctab{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:74px;border:1px solid var(--line);background:var(--raise);color:var(--ink);border-radius:12px;padding:6px 8px;cursor:pointer;font:800 12px var(--body)}
 .ctab img,.ctab .ph{width:34px;height:34px;object-fit:contain}
@@ -469,7 +472,7 @@ function applyDone(acc, now){
   return {...acc, inv, th, bh, ups:acc.ups.filter(u=>u.end>now), done:hist, _justDone:done};
 }
 /* Terminar una mejora antes de tiempo, como en el juego: con gemas o con el libro que toque */
-const FINISH = {gems:["Gemas","mi_gems"], build:["Libro de construcción","mi_build"], hero:["Libro de héroes","mi_hero"], fight:["Libro de pelea","mi_fight"], spell:["Libro de hechizos","mi_spell"], all:["Libro de todo","mi_all"], time:["Tiempo cumplido",null]};
+const FINISH = {hb:["Martillo de construcción","mi_hb"], hh:["Martillo de héroes","mi_hh"], hf:["Martillo de pelea","mi_hf"], hs:["Martillo de hechizos","mi_hs"], gems:["Gemas","mi_gems"], build:["Libro de construcción","mi_build"], hero:["Libro de héroes","mi_hero"], fight:["Libro de pelea","mi_fight"], spell:["Libro de hechizos","mi_spell"], all:["Libro de todo","mi_all"], time:["Tiempo cumplido",null]};
 function finishOptions(up){
   const g=(CAT[up.id]||{}).g||"";
   if(g.startsWith("bb_")) return ["gems"];               // en la base del constructor no hay libros
@@ -478,6 +481,35 @@ function finishOptions(up){
   if(g==="h_spl") return ["spell","all","gems"];
   if(g==="h_pet") return ["all","gems"];
   return ["build","all","gems"];                           // edificios, trampas, muros, ayuntamiento
+}
+/* Martillos: suben al instante el siguiente nivel de algo que no se está mejorando */
+function hammerFor(id){
+  const g=(CAT[id]||{}).g||"";
+  if(g.startsWith("bb_")||g==="h_pet"||g==="h_wal"||g==="h_grd") return null;
+  if(g==="h_her") return "hh";
+  if(g==="h_trp2"||g==="h_sie") return "hf";
+  if(g==="h_spl") return "hs";
+  return "hb";
+}
+function hammerUpgrade(acc, id, from, m, now){
+  const inv=JSON.parse(JSON.stringify(acc.inv||{}));
+  addInv(inv,id,from,-1); addInv(inv,id,from+1,1);
+  let th=acc.th; if(id===ID_TH) th=Math.max(th,from+1);
+  const plan=[...(acc.plan||[])]; const pi=plan.findIndex(p=>p.id===id&&p.from===from); if(pi>=0) plan.splice(pi,1);
+  const hist=[{id,to:from+1,end:now,m,saved:effDur(acc,id,from)}, ...(acc.done||[])].slice(0,20);
+  return {...acc, inv, th, plan, done:hist};
+}
+/* Dónde rinde más cada objeto mágico: el libro en la mejora en curso con más tiempo pendiente,
+   el martillo en la mejora disponible más larga */
+function magicAdvice(acc, now){
+  const ups=(acc.ups||[]).filter(u=>u.end>now&&vilOf(u.id)==="h");
+  const bookBest=k=>ups.filter(u=>finishOptions(u).includes(k)).sort((a,b)=>(b.end-a.end))[0]||null;
+  const items=catalogItems(acc,"h").filter(x=>!x.lock&&!x.busy&&!x.isNew&&x.from>0);
+  const hamBest=k=>items.filter(x=>hammerFor(x.id)===k).map(x=>({...x,d:effDur(acc,x.id,x.from)})).sort((a,b)=>b.d-a.d)[0]||null;
+  return {
+    books:["build","hero","fight","spell","all"].map(k=>({k, up:bookBest(k)})),
+    hammers:["hb","hh","hf","hs"].map(k=>({k, it:hamBest(k)}))
+  };
 }
 function finishUpgrade(acc, u, m, now){
   const up=(acc.ups||[]).find(x=>x.u===u); if(!up) return acc;
@@ -1006,7 +1038,7 @@ function catalogHtml(acc, vil){
           return `<div class="ilvl ${x.lock?"locked":""}">
             <div class="lvtxt"><span class="lvl ${CAT[x.id].sc&&x.from>=CAT[x.id].sc?"sc":""}">${x.from===0?"Construir nuevo":esc(stepTxt(x.id,x.from))}</span>${x.isNew?`<span class="small muted">${x.cnt>1?`te faltan ${x.cnt}`:"te falta 1"}</span>`:(x.cnt>1?`<b class="cnt">×${x.cnt}</b>`:"")}${x.busy?`<span class="small muted">cuando acabe la actual</span>`:""}${x.lock?`<span class="small muted">pide nivel ${reqLevel(x.id,x.from)}</span>`:""}</div>
             <div class="lvinfo"><span class="t">${fmtDur(d)}</span>${cost?`<span class="cost">${resIcon(c.res)}${fmtNum(cost)}</span>`:""}</div>
-            <div class="gobtns"><button class="btn" data-act="padd" data-acc="${esc(acc._id)}" data-id="${x.id}" data-from="${x.from}" data-cnt="${x.cnt}">+ Plan</button>${x.busy?"":`<button class="btn" data-act="start" data-acc="${esc(acc._id)}" data-id="${x.id}" data-from="${x.from}">Empezar</button>`}</div>
+            <div class="gobtns">${!x.busy&&!x.isNew&&x.from>0&&!x.lock&&hammerFor(x.id)?`<button class="btn icon ham" title="${esc(FINISH[hammerFor(x.id)][0])}" aria-label="${esc(FINISH[hammerFor(x.id)][0])}" data-act="hammer" data-acc="${esc(acc._id)}" data-id="${x.id}" data-from="${x.from}">${img(FINISH[hammerFor(x.id)][1],0,"bi")}</button>`:""}<button class="btn" data-act="padd" data-acc="${esc(acc._id)}" data-id="${x.id}" data-from="${x.from}" data-cnt="${x.cnt}">+ Plan</button>${x.busy?"":`<button class="btn" data-act="start" data-acc="${esc(acc._id)}" data-id="${x.id}" data-from="${x.from}">Empezar</button>`}</div>
           </div>`; }).join("")}</div>
       </div>`;
     }).join("")}</div></div>`).join(""):`<div class="empty">${Object.keys(acc.inv||{}).length?"No hay nada que coincida con el filtro.":"Importa el JSON de esta cuenta para cargar tus niveles."}</div>`}
@@ -1082,6 +1114,21 @@ function nightHtml(acc, vil, now){
   return `<div class="panel night-sug"><div class="panel-head"><h2>Antes de dormir</h2><span class="muted small">Te levantas ${esc(fmtWhen(wake.getTime()))}</span></div>
     <div class="small muted">Mejoras que duran al menos hasta que te levantes, para que nadie se quede parado por la noche.</div>${blocks}</div>`;
 }
+function magicHtml(acc, vil, now){
+  if(vil!=="h") return "";
+  const a=magicAdvice(acc,now);
+  const brow=x=>{ const f=FINISH[x.k]; if(!x.up) return `<div class="mrow"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}</div><div class="sub">No hay nada en curso donde usarlo</div></div><span></span></div>`;
+    const u=x.up; return `<div class="mrow"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}</div><div class="sub">${esc(CAT[u.id].n)} ${esc(stepTxt(u.id,u.from))} · ahorras <b>${fmtDur(u.end-now)}</b></div></div>
+      <button class="btn" data-act="dofinish" data-m="${x.k}" data-acc="${esc(acc._id)}" data-u="${esc(u.u)}">Usar</button></div>`; };
+  const hrow=x=>{ const f=FINISH[x.k]; if(!x.it) return `<div class="mrow"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}</div><div class="sub">Nada disponible para mejorar</div></div><span></span></div>`;
+    const it=x.it; return `<div class="mrow"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}</div><div class="sub">${esc(CAT[it.id].n)} ${esc(stepTxt(it.id,it.from))} · ahorras <b>${fmtDur(it.d)}</b></div></div>
+      <button class="btn" data-act="hammer" data-acc="${esc(acc._id)}" data-id="${it.id}" data-from="${it.from}">Usar</button></div>`; };
+  return `<details class="panel"><summary>¿Dónde uso mis objetos mágicos?</summary>
+    <div class="small muted">Cada objeto, en la mejora donde más tiempo te ahorra ahora mismo. Los libros terminan algo que ya está en curso; los martillos suben al instante algo que no se está mejorando.</div>
+    <div class="acc-label">Libros</div><div class="list">${a.books.map(brow).join("")}</div>
+    <div class="acc-label">Martillos</div><div class="list">${a.hammers.map(hrow).join("")}</div>
+  </details>`;
+}
 function historyHtml(acc, vil){
   const list=(acc.done||[]).filter(d=>CAT[d.id]&&vilOf(d.id)===vil).slice(0,8);
   if(!list.length) return "";
@@ -1122,6 +1169,7 @@ function renderAcc(acc, now){
   </div>
   ${catalogHtml(acc,vil)}
   ${nightHtml(acc,vil,now)}
+  ${magicHtml(acc,vil,now)}
   ${planHtml(acc,vil,now)}
   ${historyHtml(acc,vil)}
   ${progressHtml(acc,vil,now)}
@@ -1426,6 +1474,22 @@ document.addEventListener("click",ev=>{
     try{ restoreBackup(raw); S.view="all"; toast("Datos restaurados"); }catch(e){ toast(e.message.startsWith("No es")?e.message:"La copia no es válida."); }
     return;
   }
+  if(act==="hammer"){
+    const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
+    const id=+el.dataset.id, from=+el.dataset.from, k=hammerFor(id); if(!k) return;
+    const f=FINISH[k], d=effDur(acc,id,from);
+    document.getElementById("modal-root").innerHTML=`<div class="modal-back" data-act="close-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="h-title">
+      <div class="mhead"><div class="tile">${img(f[1],0)}</div><div><h2 id="h-title">${esc(f[0])}</h2><div class="muted small">${esc(CAT[id].n)} ${esc(stepTxt(id,from))} al instante · ahorras ${fmtDur(d)}</div></div></div>
+      <div class="actions"><button class="btn primary big" data-act="dohammer" data-k="${k}" data-acc="${esc(acc._id)}" data-id="${id}" data-from="${from}">Usar martillo</button><button class="btn big" data-act="close">Cancelar</button></div>
+    </div></div>`;
+    return;
+  }
+  if(act==="dohammer"){
+    const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
+    const id=+el.dataset.id, from=+el.dataset.from;
+    saveAcc(hammerUpgrade(acc,id,from,el.dataset.k,Date.now())); closeModal();
+    toast(CAT[id].n+" a nivel "+(from+1)+" con "+FINISH[el.dataset.k][0].toLowerCase()); return;
+  }
   if(act==="finish"){
     const [acc,up]=findUp(el.dataset.acc, el.dataset.u); if(!acc||!up) return;
     const opts=finishOptions(up), left=Math.max(0,up.end-Date.now());
@@ -1497,7 +1561,7 @@ document.addEventListener("change",ev=>{
 });
 document.addEventListener("keydown",ev=>{ if(ev.key==="Escape") closeModal(); });
 }
-if(typeof module!=="undefined"){ module.exports={parseExport,mergeImport,applyDone,startUpgrade,cancelUpgrade,ntfyLink,catDur,effDur,CAT,busy,goblinUp,stepTxt,eqMax,maxAt,applyBoost,boostedLeft,finishUpgrade,finishOptions,progress,nextFree,maxAt,simulatePlan,sleepAdjust,planFrom,takeIdle,idleLink}; }
+if(typeof module!=="undefined"){ module.exports={parseExport,mergeImport,applyDone,startUpgrade,cancelUpgrade,ntfyLink,catDur,effDur,CAT,busy,goblinUp,hammerFor,hammerUpgrade,magicAdvice,stepTxt,eqMax,maxAt,applyBoost,boostedLeft,finishUpgrade,finishOptions,progress,nextFree,maxAt,simulatePlan,sleepAdjust,planFrom,takeIdle,idleLink}; }
 else {
   fetch("images.json").then(r=>r.ok?r.json():null).then(j=>{ if(j){ IMG=j; render(); } }).catch(()=>{});
   initStore();
