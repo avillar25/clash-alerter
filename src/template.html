@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clash Alerter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,800;6..12,900&display=swap" rel="stylesheet">
+<style>
+/* Layout: columna central tipo app; cabecera de cuenta con el ayuntamiento, selector Aldea / Base del constructor,
+   y debajo tarjetas: trabajadores, en curso, progreso y catálogo. Oro = constructores, morado = laboratorio, azul noche = base del constructor. */
+:root{
+  --bg:#e9edf2; --surface:#ffffff; --raise:#f4f6f9; --ink:#18212c; --muted:#5d6977; --line:#d6dce4;
+  --gold:#c4830f; --gold-ink:#8a5a05; --gold-soft:#fcf0d6;
+  --elixir:#8340cf; --elixir-soft:#f1e7fc;
+  --night:#2f5fa8; --night-soft:#e2ebf8;
+  --ok:#2c8a4a; --ok-soft:#dff2e5; --warn:#b4560a; --warn-soft:#fdead6; --bad:#b4322b;
+  --display:"Lilita One","Arial Rounded MT Bold",system-ui,sans-serif;
+  --body:"Nunito Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --shadow:0 1px 2px rgba(20,30,45,.06),0 4px 14px rgba(20,30,45,.05);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1319; --surface:#181e27; --raise:#202834; --ink:#e8ecf1; --muted:#97a3b2; --line:#2a3340;
+    --gold:#e9ad3c; --gold-ink:#f2c46c; --gold-soft:#36290f;
+    --elixir:#b98af0; --elixir-soft:#2c1f3f;
+    --night:#7fa8ec; --night-soft:#1b2a44;
+    --ok:#5cc47c; --ok-soft:#163021; --warn:#f0a35b; --warn-soft:#382513; --bad:#ef7a72;
+    --shadow:0 1px 2px rgba(0,0,0,.3);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1319; --surface:#181e27; --raise:#202834; --ink:#e8ecf1; --muted:#97a3b2; --line:#2a3340;
+  --gold:#e9ad3c; --gold-ink:#f2c46c; --gold-soft:#36290f;
+  --elixir:#b98af0; --elixir-soft:#2c1f3f;
+  --night:#7fa8ec; --night-soft:#1b2a44;
+  --ok:#5cc47c; --ok-soft:#163021; --warn:#f0a35b; --warn-soft:#382513; --bad:#ef7a72;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--body);-webkit-font-smoothing:antialiased}
+.wrap{max-width:820px;margin:0 auto;padding:max(16px,env(safe-area-inset-top)) 16px max(90px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--display);font-weight:400;letter-spacing:.3px;margin:0;text-wrap:balance}
+h1{font-size:26px;line-height:1.1} h2{font-size:20px} h3{font-size:15px}
+.muted{color:var(--muted)} .small{font-size:13px}
+.num{font-variant-numeric:tabular-nums}
+/* cabecera */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.top .sub{color:var(--muted);font-size:13px}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0}
+.tab{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:6px 13px 6px 8px;border-radius:999px;font:700 14px var(--body);cursor:pointer;white-space:nowrap}
+.tab.plain{padding:6px 13px}
+.tab img{width:24px;height:24px;object-fit:contain}
+.tab[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+/* tarjetas */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow)}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.hero{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+.hero .th{width:84px;height:84px;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))}
+.hero .tag{font-size:13px;color:var(--muted)}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+.seg button{display:flex;align-items:center;justify-content:center;gap:8px;border:0;background:transparent;color:var(--muted);border-radius:9px;padding:8px 6px;font:800 14px var(--body);cursor:pointer}
+.seg button img{width:28px;height:28px;object-fit:contain}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.seg button[aria-pressed="true"].bb{color:var(--night)}
+.vil-title{display:flex;align-items:center;gap:8px}
+.vil-title .pill{font:800 11px var(--body);text-transform:uppercase;letter-spacing:.6px;padding:3px 8px;border-radius:999px;background:var(--gold-soft);color:var(--gold-ink)}
+.vil-title .pill.bb{background:var(--night-soft);color:var(--night)}
+/* trabajadores */
+.workers{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.wk{border-radius:12px;padding:9px 11px;background:var(--raise);border:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.wk .k{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.wk .v{font:400 18px var(--display)}
+.wk.free{background:var(--ok-soft);border-color:transparent}
+.wk.free .v{color:var(--ok)}
+.helpers{display:flex;flex-wrap:wrap;gap:8px}
+.hp{display:flex;align-items:center;gap:8px;background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:5px 11px 5px 5px;font-size:13px}
+.hp img{width:30px;height:30px;object-fit:contain}
+.hp b{display:block;font-size:13px}
+.hp.ready{background:var(--ok-soft);border-color:transparent}
+/* mejoras en curso */
+.list{display:flex;flex-direction:column;gap:10px}
+.up{display:grid;grid-template-columns:56px 1fr auto;gap:12px;padding:11px;border-radius:14px;background:var(--raise);border:1px solid var(--line);border-left:4px solid var(--gold);align-items:start}
+.up.l,.up.p,.up.bl{border-left-color:var(--elixir)}
+.up.bb{border-left-color:var(--night)}
+.tile{width:56px;height:56px;border-radius:12px;background:var(--surface);display:grid;place-items:center;overflow:hidden;border:1px solid var(--line)}
+.tile img{width:50px;height:50px;object-fit:contain}
+.tile.sm{width:46px;height:46px;border-radius:10px}
+.tile.sm img{width:40px;height:40px}
+.ph{font:400 20px var(--display);color:var(--muted)}
+.up .name{font-weight:900;line-height:1.25}
+.lvl{display:inline-flex;align-items:center;gap:4px;font:800 12px var(--body);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:4px;white-space:nowrap;vertical-align:1px}
+.up .meta{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:3px 10px;margin-top:3px}
+.acc-label{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+.cd{font:400 20px var(--display);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.cd.done{color:var(--ok)}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:var(--gold)}
+.up.l .bar i,.up.p .bar i,.up.bl .bar i{background:var(--elixir)}
+.up.bb .bar i{background:var(--night)}
+.nt{font-size:12px;font-weight:800;border-radius:6px;padding:1px 7px}
+.nt.ok{background:var(--ok-soft);color:var(--ok)}
+.nt.warn{background:var(--warn-soft);color:var(--warn)}
+.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+@media (max-width:520px){ .up{grid-template-columns:48px 1fr} .up .tile{width:48px;height:48px} .up .tile img{width:42px;height:42px} .up .cd{grid-column:2;text-align:left;order:-1;font-size:18px} }
+/* botones y formularios */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:7px 12px;font:800 13px var(--body);cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--gold);border-color:var(--gold);color:#1d1404}
+.btn.primary.l{background:var(--elixir);border-color:var(--elixir);color:#fff}
+.btn.primary.bb{background:var(--night);border-color:var(--night);color:#fff}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.big{padding:11px 16px;font-size:15px}
+.btn:focus-visible,.tab:focus-visible,.seg button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+input,select,textarea{font:15px var(--body);color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
+textarea{min-height:110px;font:12px ui-monospace,Menlo,Consolas,monospace}
+label{font-size:13px;font-weight:800;display:flex;flex-direction:column;gap:4px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>label{flex:1 1 140px}
+.check{flex-direction:row;align-items:center;gap:8px;font-weight:700}
+.check input{width:auto}
+/* progreso */
+.prog{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center}
+.ring{width:92px;height:92px}
+.ring text{font-family:var(--display);fill:var(--ink)}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.stat{background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:8px 11px}
+.stat .k{font-size:12px;font-weight:800;color:var(--muted)}
+.stat .v{font:400 17px var(--display);font-variant-numeric:tabular-nums}
+.costs{display:flex;flex-wrap:wrap;gap:6px 14px}
+.cost{display:inline-flex;align-items:center;gap:4px;font-weight:800;font-variant-numeric:tabular-nums;font-size:13px}
+.cost img{width:18px;height:18px;object-fit:contain}
+/* catálogo */
+.cat-filters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:480px){.cat-filters{grid-template-columns:1fr}}
+.group h3{padding:12px 0 6px;color:var(--muted);font-family:var(--body);font-weight:900;font-size:12px;text-transform:uppercase;letter-spacing:.6px}
+.items{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:8px}
+@media (max-width:400px){.items{grid-template-columns:1fr}}
+.item{display:grid;grid-template-columns:46px 1fr auto;gap:10px;align-items:center;padding:8px;border-radius:12px;background:var(--raise);border:1px solid var(--line)}
+.item .nm{font-weight:900;line-height:1.2}
+.item .sub{font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:2px 8px;align-items:center}
+.item .go{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.item .t{font:400 15px var(--display);font-variant-numeric:tabular-nums}
+.item.locked{opacity:.55}
+.prow{display:grid;grid-template-columns:46px 1fr auto;gap:10px;align-items:center;padding:8px;border-radius:12px;background:var(--raise);border:1px solid var(--line);border-left:4px solid var(--gold)}
+.prow.l,.prow.p,.prow.bl{border-left-color:var(--elixir)} .prow.bb{border-left-color:var(--night)}
+.prow .nm{font-weight:900;line-height:1.25}
+.prow .sub{font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:2px 10px}
+.okt{color:var(--ok)}
+.pbtns,.gobtns{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.btn.icon{padding:6px 9px;min-width:32px}
+.btn:disabled{opacity:.35;cursor:default}
+@media (max-width:520px){.prow{grid-template-columns:46px 1fr}.prow .pbtns{grid-column:1/-1}}
+.wtabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:6px}
+.wtab{display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--tab-edge,var(--line));border-bottom-width:3px;background:var(--tab-bg,var(--raise));color:var(--tab-ink,var(--ink));border-radius:12px;padding:6px 8px;cursor:pointer;font-family:var(--btn-font,var(--body));font-weight:var(--btn-weight,800);font-size:14px;min-width:0}
+.wtab img,.wtab .ph{width:32px;height:32px;object-fit:contain;flex:0 0 auto}
+.wtab span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wtab b{font-family:var(--body);font-weight:900;font-size:12px;background:rgba(0,0,0,.18);border-radius:999px;padding:1px 7px}
+.wtab[aria-selected="true"]{background:var(--tab-on-bg,var(--ink));color:var(--tab-on-ink,var(--surface));border-color:var(--tab-on-edge,var(--ink))}
+.wtab:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+@media (max-width:560px){.wtab{flex-direction:column;gap:2px;font-size:13px;padding:6px 4px}.wtab span{white-space:normal;text-align:center;line-height:1.1}}
+.accchip{display:inline-flex;align-items:center;gap:5px;background:var(--ac);color:#fff;border-radius:999px;padding:2px 9px 2px 3px;font:900 12px var(--body);letter-spacing:.2px}
+.accchip img,.accchip .ph{width:20px;height:20px;object-fit:contain;background:rgba(255,255,255,.25);border-radius:50%}
+.accchip i{font-style:normal;opacity:.8;font-weight:800}
+.up.withacc{border-left-color:var(--ac)!important;border-left-width:6px}
+.up.withacc .tile{box-shadow:0 0 0 3px var(--ac)}
+.acc-card{border-left:6px solid var(--ac)!important}
+.tab.acc{box-shadow:inset 0 -3px 0 var(--ac)}
+.nt.soft{background:var(--raise);color:var(--muted);border:1px solid var(--line)}
+img.bi{width:20px;height:20px;object-fit:contain;flex:0 0 auto}
+.fopts{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.fopt{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;border-radius:14px;border:1px solid var(--tab-edge,var(--line));border-bottom-width:4px;background:var(--raise);color:var(--ink);cursor:pointer;font-family:var(--btn-font,var(--body));font-weight:var(--btn-weight,800);font-size:14px;text-align:center}
+.fopt img,.fopt .ph{width:52px;height:52px;object-fit:contain}
+.fopt:hover{border-color:var(--gold)}
+.fopt:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.hrow{display:grid;grid-template-columns:46px 1fr auto;gap:10px;align-items:center;padding:8px;border-radius:12px;background:var(--raise);border:1px solid var(--line)}
+.hrow .nm{font-weight:900} .hrow .sub{font-size:12px;color:var(--muted)}
+.how{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+.how.used{color:var(--gold-ink);background:var(--gold-soft);border-color:transparent}
+.boosts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.boost{flex-direction:row;align-items:center;gap:6px;font-weight:800;font-size:13px}
+.boost select{width:auto;padding:5px 8px;font-weight:800}
+.bbar{display:flex;flex-wrap:wrap;gap:6px}
+.btn.bst{font-size:13px}
+.bprev{display:grid;grid-template-columns:46px 1fr;gap:10px;align-items:center;padding:6px;border-radius:12px;background:var(--raise);border:1px solid var(--line)}
+.btn.gob.on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.gobtag{display:inline-flex;align-items:center;gap:4px;color:var(--ok)}
+.gobwk .k{display:flex;align-items:center;gap:5px}
+.gobpick{background:var(--ok-soft);border-radius:10px;padding:8px 10px}
+.igroup{border-radius:14px;background:var(--raise);border:1px solid var(--line);padding:8px;display:flex;flex-direction:column;gap:6px}
+.ihead{display:grid;grid-template-columns:46px 1fr;gap:10px;align-items:center}
+.ihead .nm{font-weight:900;line-height:1.2} .ihead .sub{font-size:12px;color:var(--muted)}
+.wood .ihead .nm{font-family:var(--display);font-weight:400;font-size:16px}
+.ilevels{display:flex;flex-direction:column;gap:4px}
+.ilvl{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 8px;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
+.ilvl.locked{opacity:.55}
+.lvtxt{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.lvtxt .lvl{margin-left:0}
+.cnt{font-size:12px}
+.lvinfo{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.lvinfo .t{font:400 14px var(--display);font-variant-numeric:tabular-nums}
+@media (max-width:440px){.ilvl{grid-template-columns:1fr auto}.ilvl .gobtns{grid-column:1/-1;justify-content:flex-end}}
+.actb{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:800;color:var(--ok);background:var(--ok-soft);border-radius:999px;padding:4px 10px}
+.occbar{border-radius:12px;padding:10px;background:var(--warn-soft);display:flex;flex-direction:column;gap:8px}
+.occbar.allbusy{background:var(--ok-soft)}
+.occhead{font-weight:800;color:var(--warn)} .occbar.allbusy .occhead{color:var(--ok)}
+.occs{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px}
+.occ{display:flex;flex-direction:column;gap:3px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 9px}
+.occ .k{font-size:12px;font-weight:800;color:var(--muted)}
+.occ .v{font:400 20px var(--display)}
+.occ.has .v{color:var(--warn)} .occ.full .v{color:var(--ok)}
+.occ .ok{font-size:12px;font-weight:800;color:var(--ok)}
+.occ .who{display:flex;flex-wrap:wrap;gap:4px}
+.linkchip{border:0;cursor:pointer}
+.lvl.sc{background:var(--elixir-soft);border-color:var(--elixir);color:var(--elixir)}
+.cats{display:flex;flex-direction:column;gap:5px}
+.catrow{display:grid;grid-template-columns:130px 1fr 42px;gap:8px;align-items:center;font-size:13px;font-weight:800}
+.cb{height:9px;border-radius:5px;background:var(--line);overflow:hidden}.cb i{display:block;height:100%;border-radius:5px}
+.cp{text-align:right}
+details.loot{border:1px dashed var(--line);border-radius:12px;padding:8px 10px}
+details.loot summary{font-family:var(--btn-font,var(--body));font-size:15px}
+.lsum{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}
+.lsteps{display:flex;flex-direction:column;gap:3px}
+.lstep{display:grid;grid-template-columns:120px 1fr auto auto;gap:8px;align-items:center;font-size:13px;padding:4px 0;border-top:1px solid var(--line)}
+@media (max-width:480px){.lstep{grid-template-columns:1fr auto}.lstep .lw{grid-column:1/-1;color:var(--muted);font-size:12px}}
+.eqi,.wall,.nrow{display:grid;grid-template-columns:46px 1fr auto;gap:10px;align-items:center;padding:8px;border-radius:12px;background:var(--raise);border:1px solid var(--line)}
+.eqi.epic{border-color:var(--elixir)}
+.eqi .nm,.wall .nm,.nrow .nm{font-weight:900} .eqi .sub,.wall .sub,.nrow .sub{font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.walls{display:flex;flex-direction:column;gap:6px}
+.wall.max{opacity:.7}
+.wup{display:flex;gap:6px;align-items:center}.wup input{width:64px;padding:6px}
+.night-sug{border-color:var(--night)!important}
+.banner.okb{background:var(--ok-soft);color:var(--ok)}
+.ctabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.ctab{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:74px;border:1px solid var(--line);background:var(--raise);color:var(--ink);border-radius:12px;padding:6px 8px;cursor:pointer;font:800 12px var(--body)}
+.ctab img,.ctab .ph{width:34px;height:34px;object-fit:contain}
+.ctab b{font-size:11px;color:var(--muted)}
+.ctab[aria-selected="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.ctab[aria-selected="true"] b{color:var(--surface);opacity:.75}
+.ctab:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.empty{padding:18px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);text-align:center}
+.banner{border-radius:10px;padding:10px 12px;font-size:14px;background:var(--warn-soft);color:var(--warn);font-weight:700}
+.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+code{font:13px ui-monospace,Menlo,Consolas,monospace;background:var(--raise);padding:1px 5px;border-radius:5px;word-break:break-all}
+details summary{cursor:pointer;font-family:var(--display);font-size:18px}
+details[open] summary{margin-bottom:4px}
+.accs{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.acc-card{display:grid;grid-template-columns:56px 1fr;gap:10px;align-items:center;background:var(--raise);border:1px solid var(--line);border-radius:14px;padding:10px;cursor:pointer;text-align:left;color:var(--ink);font:inherit}
+.acc-card img{width:56px;height:56px;object-fit:contain}
+.acc-card .ln{font-size:13px;color:var(--muted)}
+.acc-card .ln b{color:var(--ink)}
+.acc-card .ln b.ok{color:var(--ok)}
+/* modal */
+.modal-back{position:fixed;inset:0;background:rgba(8,12,18,.6);display:flex;align-items:flex-end;justify-content:center;padding:12px;z-index:10}
+@media (min-width:600px){.modal-back{align-items:center}}
+.modal{background:var(--surface);border-radius:18px;padding:18px;width:100%;max-width:460px;display:flex;flex-direction:column;gap:14px;max-height:92%;overflow:auto}
+.mhead{display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:center}
+.mhead .tile{width:64px;height:64px}
+.mhead .tile img{width:58px;height:58px}
+.dur{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.endline b{font-family:var(--display);font-weight:400;font-size:18px}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:9px 14px;border-radius:10px;font-weight:800;font-size:14px;z-index:20;max-width:90%}
+@media (prefers-reduced-motion:no-preference){.modal{animation:pop .14s ease-out}@keyframes pop{from{transform:translateY(8px)}to{transform:none}}}
+
+/* Temas: madera y oro para la aldea principal, azul noche para la base del constructor */
+.wood{
+  --bg:#3b2a1a; --page-ink:#f3e3c6; --page-muted:#cdb48c;
+  --surface:#f3e3c6; --raise:#ead6b0; --ink:#3b2a1a; --muted:#7a5532; --line:#c9a877; --panel-edge:#7a5532; --panel-bw:3px;
+  --gold:#e9a521; --gold-ink:#6b4510; --gold-soft:#f7dc9a; --elixir:#9b4fd6; --elixir-edge:#5e2a8c; --elixir-soft:#ead9f7; --night:#2f5fa8; --night-soft:#dbe5f5;
+  --ok:#3f8a1f; --ok-soft:#d5ecb8; --warn:#a14e08; --warn-soft:#f6d3a8; --bad:#a8281f;
+  --primary-bg:#6dbf3b; --primary-edge:#3f7f1c; --primary-ink:#ffffff; --btn-relief:4px; --btn-font:var(--display); --btn-weight:400; --btn-size:15px;
+  --tab-bg:#5a4129; --tab-ink:#f3e3c6; --tab-edge:#2a1d11; --tab-on-bg:#f2b630; --tab-on-ink:#3b2a1a; --tab-on-edge:#b07a12;
+  --cd-ink:#3b2a1a; --shadow:none; color-scheme:light;
+}
+.night{
+  --bg:#0b1020; --page-ink:#e6eeff; --page-muted:#8d9cc4;
+  --surface:#131c36; --raise:#1a2648; --ink:#e6eeff; --muted:#8d9cc4; --line:#2a3a66; --panel-edge:#2a3a66; --panel-bw:1px;
+  --gold:#ffd36b; --gold-ink:#ffd36b; --gold-soft:#3a3115; --elixir:#b98af0; --elixir-edge:#b98af0; --elixir-soft:#2c1f4a; --night:#7fa8ec; --night-soft:#1f3160;
+  --ok:#5cd68a; --ok-soft:#14321f; --warn:#f4b15e; --warn-soft:#3a2a12; --bad:#ff8a80;
+  --primary-bg:#ffd36b; --primary-edge:#ffd36b; --primary-ink:#1a1405; --btn-relief:1px; --btn-font:var(--body); --btn-weight:900; --btn-size:13px;
+  --tab-bg:#18213a; --tab-ink:#8d9cc4; --tab-edge:#18213a; --tab-on-bg:#2b4b8f; --tab-on-ink:#e6eeff; --tab-on-edge:#2b4b8f;
+  --cd-ink:#ffd36b; --shadow:none; color-scheme:dark;
+}
+html{background:var(--bg)}
+body.wood,body.night{background:var(--bg)}
+.top h1{color:var(--page-ink,var(--ink))} .top .sub{color:var(--page-muted,var(--muted))}
+.panel{border:var(--panel-bw,1px) solid var(--panel-edge,var(--line));color:var(--ink)}
+.btn{border-bottom-width:var(--btn-relief,1px);font-family:var(--btn-font,var(--body));font-weight:var(--btn-weight,800);font-size:var(--btn-size,13px)}
+.btn.primary,.btn.primary.bb{background:var(--primary-bg,var(--gold));border-color:var(--primary-edge,var(--gold));color:var(--primary-ink,#1d1404)}
+.btn.primary.l{background:var(--elixir);border-color:var(--elixir-edge,var(--elixir));color:#fff}
+.night .btn.primary.l{color:#160d26}
+.btn.danger{background:var(--surface)}
+.btn:active{transform:translateY(1px)}
+.tab,.ctab{background:var(--tab-bg,var(--surface));color:var(--tab-ink,var(--ink));border-color:var(--tab-edge,var(--line));border-bottom-width:3px}
+.tab{font-family:var(--btn-font,var(--body));font-weight:var(--btn-weight,700)}
+.tab[aria-pressed="true"],.ctab[aria-selected="true"]{background:var(--tab-on-bg,var(--ink));color:var(--tab-on-ink,var(--surface));border-color:var(--tab-on-edge,var(--ink))}
+.ctab b{color:inherit;opacity:.7}
+.seg button[aria-pressed="true"]{background:var(--tab-on-bg);color:var(--tab-on-ink)}
+.seg button[aria-pressed="true"].bb{background:#2b4b8f;color:#e6eeff}
+.cd{color:var(--cd-ink,var(--ink))}
+.cd.done{color:var(--ok)}
+.wood h2,.wood .nm,.wood .up .name,.wood .item .nm{font-family:var(--display);font-weight:400;letter-spacing:.2px}
+.wood .up .name,.wood .item .nm,.wood .prow .nm{font-size:16px}
+.wood .tile{background:#e2c99b;border-color:#c9a877}
+.wood .bar{height:9px;border-radius:5px;background:#d9c39b}
+.wood .bar i{border-radius:5px}
+.wood .lvl{background:#f7dc9a;border-color:#d9a53a;color:#6b4510}
+.night .lvl{background:#1f3160;border-color:#2b4b8f;color:#bcd2ff}
+.wood .wk.free,.wood .hp.ready{background:#d5ecb8}
+.wood details summary,.night details summary{color:var(--ink)}
+.night .panel{background:var(--surface)}
+.night .up,.night .item,.night .prow{background:var(--raise)}
+.night .tile{background:#0e1426;border-color:#2a3a66}
+</style>
+</head>
+<body class="wood">
+<div class="wrap" id="app">
+  <div class="top"><div><h1>Clash Alerter</h1><div class="sub">Cargando tus cuentas…</div></div></div>
+</div>
+<div id="modal-root"></div>
+<script>
+"use strict";
+const CAT = __CATALOG__;
+const EQ = __EQ__;     // equipamiento de héroes: niveles, herrería necesaria y mineral
+const MAXC = __MAXC__; // cuántos de cada edificio permite cada nivel de ayuntamiento / taller
+const APP_URL = "https://claude.ai/artifact/2SfHqMk3qSeRm9DkUgqZoz";
+const GROUPS = [
+  ["h_th","Ayuntamiento"],["h_def","Defensas"],["h_trp","Trampas"],["h_arm","Ejército"],["h_res","Recursos"],
+  ["h_her","Héroes"],["h_grd","Guardianes"],["h_pet","Mascotas"],["h_trp2","Tropas"],["h_spl","Hechizos"],["h_sie","Asedio"],["h_wal","Muros"],["h_wrk","Otros"],
+  ["bb_th","Taller"],["bb_def","Defensas"],["bb_trp","Trampas"],["bb_arm","Ejército"],["bb_res","Recursos"],
+  ["bb_her","Héroes"],["bb_trp2","Tropas"],["bb_wal","Muros"],["bb_wrk","Otros"]
+];
+const VIL = {h:{name:"Aldea principal", short:"Aldea", hall:"Ayuntamiento", workers:["b","l","p"]}, bb:{name:"Base del constructor", short:"Base nocturna", hall:"Taller del constructor", workers:["bb","bl"]}};
+const WORKER = {b:"Constructores", l:"Laboratorio", p:"Casa de mascotas", bb:"Constructores", bl:"Laboratorio estelar"};
+const WORKER_SHORT = {b:"Constructor", l:"Laboratorio", p:"Mascotas", bb:"Constructor (BC)", bl:"Lab. estelar"};
+const RES = {"Gold":"Oro","Elixir":"Elixir","Dark Elixir":"Elixir oscuro","Builder Gold":"Oro (BC)","Builder Elixir":"Elixir (BC)"};
+const HELPERS = {93000000:"Aprendiz", 93000001:"Ayudante de laboratorio", 93000002:"Alquimista", 93000003:"Prospector"};
+const SECTIONS = ["buildings","traps","units","spells","siege_machines","heroes","guardians","pets","buildings2","traps2","units2","heroes2"];
+const ID_SMITH = 1000070, ID_WALL = 1000010, ID_WALL2 = 1000033;
+/* Texto del salto de nivel: los niveles por encima del máximo son supercargas */
+function stepTxt(id, from){
+  const c=CAT[id]||{};
+  if(c.sc && from>=c.sc) return `Supercarga ${from-c.sc} → ${from-c.sc+1}`;
+  return from?`${from} → ${from+1}`:"Nuevo";
+}
+const NTFY_MAX_MS = (3*86400 - 15*60) * 1000; // ntfy.sh admite hasta 3 días de retraso
+const ID_TH = 1000001, ID_BH = 1000034, ID_HUT = 1000015, ID_BOB = 1000064, ID_OTTO = 1000078;
+const vilOf = id => (CAT[id] && CAT[id].g.startsWith("bb_")) ? "bb" : "h";
+const isLab = w => w==="l"||w==="bl"||w==="p";
+/* App nativa (Capacitor en Android): datos en el móvil y avisos con notificaciones locales */
+const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const P = NATIVE ? (window.Capacitor.Plugins||{}) : {};
+
+/* ---------- imágenes (se cargan aparte para que la página abra rápido) ---------- */
+let IMG=null;
+function imgSrc(key, lvl){
+  const o=IMG&&IMG[String(key)]; if(!o) return null;
+  let s=o[String(lvl)];
+  if(!s){ const ks=Object.keys(o).map(Number).sort((a,b)=>a-b); const below=ks.filter(k=>k<=lvl); const k=below.length?below[below.length-1]:ks[0]; s=o[String(k)]; }
+  return s?"data:image/webp;base64,"+s:null;
+}
+function img(key, lvl, cls=""){
+  const s=imgSrc(key,lvl);
+  if(s) return `<img class="${cls}" alt="" src="${s}">`;
+  const n=CAT[key]?CAT[key].n:"·";
+  return `<span class="ph ${cls}">${esc(n.charAt(0))}</span>`;
+}
+function resIcon(r){ const s=imgSrc("res_"+r,0); return s?`<img alt="${esc(RES[r]||r)}" src="${s}">`:`<span class="muted">${esc(RES[r]||r)}</span>`; }
+
+/* ---------- utilidades puras ---------- */
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function rid(){return "c"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function fmtDur(ms){
+  let s=Math.max(0,Math.round(ms/1000));
+  const d=Math.floor(s/86400); s-=d*86400; const h=Math.floor(s/3600); s-=h*3600; const m=Math.floor(s/60); s-=m*60;
+  if(d) return d+"d "+h+"h"+(m&&d<2?" "+m+"m":"");
+  if(h) return h+"h"+(m?" "+m+"m":"");
+  if(m) return m+"m"+(s?" "+s+"s":"");
+  return s+"s";
+}
+function fmtCountdown(ms){
+  if(ms<=0) return "Terminada";
+  let s=Math.floor(ms/1000);
+  const d=Math.floor(s/86400); s-=d*86400; const h=Math.floor(s/3600); s-=h*3600; const m=Math.floor(s/60); s-=m*60;
+  const p=n=>String(n).padStart(2,"0");
+  return (d?d+"d ":"")+p(h)+":"+p(m)+":"+p(s);
+}
+function fmtNum(n){
+  if(n>=1e6) return (n/1e6).toFixed(n>=1e7?1:2).replace(/\.?0+$/,"")+"M";
+  if(n>=1e3) return Math.round(n/1e3)+"K";
+  return String(n);
+}
+const DTF = new Intl.DateTimeFormat("es-ES",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+const TF = new Intl.DateTimeFormat("es-ES",{hour:"2-digit",minute:"2-digit"});
+function fmtWhen(ms){
+  const d=new Date(ms), now=new Date();
+  const sameDay=(a,b)=>a.toDateString()===b.toDateString();
+  const tom=new Date(now); tom.setDate(now.getDate()+1);
+  if(sameDay(d,now)) return "hoy a las "+TF.format(d);
+  if(sameDay(d,tom)) return "mañana a las "+TF.format(d);
+  return DTF.format(d);
+}
+function catDur(id, from){ const c=CAT[id]; if(!c||from<0||from>=c.d.length) return 0; return c.d[from]*1000; }
+function catCost(id, from){ const c=CAT[id]; if(!c||from<0||from>=c.c.length) return 0; return c.c[from]||0; }
+function canUpgrade(id, from){ return catDur(id,from)>0; }
+function reqLevel(id, from){ const c=CAT[id]; return c && from<c.r.length ? c.r[from] : 0; }
+function gpFor(acc,w){ if(w==="bb"||w==="bl") return 0; const g=acc.gp||{}; return isLab(w) ? (+g.l||0) : (+g.b||0); }
+function effDur(acc,id,from){ const base=catDur(id,from); return Math.round(base*(1-gpFor(acc,CAT[id].w)/100)/1000)*1000; }
+function hallLevel(acc, vil){ return vil==="bb" ? (acc.bh||0) : (acc.th||0); }
+function maxAt(id, lim, withSc){ const c=CAT[id]; const top=(c.sc&&!withSc)?c.sc:c.d.length; let m=0; for(let L=1; L<=top; L++){ if((c.r[L-1]||0)<=lim) m=L; else break; } return m; }
+function addInv(inv,id,lvl,n){ const k=String(id), l=String(lvl); inv[k]=inv[k]||{}; inv[k][l]=(inv[k][l]||0)+n; if(inv[k][l]<=0) delete inv[k][l]; if(!Object.keys(inv[k]).length) delete inv[k]; }
+function maxLvl(inv,id){ const o=inv[String(id)]; if(!o) return 0; return Math.max(0,...Object.keys(o).map(Number)); }
+
+/* Lee el JSON exportado desde el juego */
+function parseExport(j){
+  if(!j||typeof j!=="object"||!Array.isArray(j.buildings)) throw new Error("No parece el JSON exportado del juego: falta la lista de edificios.");
+  const ts=(+j.timestamp||Math.floor(Date.now()/1000))*1000;
+  const inv={}, ups=[]; let hut=0, bob=false, otto=false, pet=false;
+  for(const sec of SECTIONS){
+    for(const e of (j[sec]||[])){
+      if(!e||typeof e!=="object"||typeof e.lvl!=="number") continue;
+      if(e.data===ID_HUT) hut+=(e.cnt||1);
+      if(e.data===ID_BOB) bob=true;
+      if(e.data===ID_OTTO) otto=true;
+      if(e.data===1000068) pet=true;
+      if(!CAT[e.data]) continue;
+      const scl=+(e.supercharge||e.sc||0); if(scl && CAT[e.data].sc) e={...e, lvl:CAT[e.data].sc+scl};
+      if(e.timer){
+        const from=e.lvl, end=ts+e.timer*1000;
+        ups.push({u:rid(), id:e.data, n:CAT[e.data].n, from, to:from+1, end, dur:Math.max(catDur(e.data,from), e.timer*1000), w:CAT[e.data].w, nt:0});
+      } else addInv(inv,e.data,e.lvl,e.cnt||1);
+    }
+  }
+  const eq={};
+  for(const e of (j.equipment||[])) if(e&&EQ[e.data]&&typeof e.lvl==="number") eq[e.data]=e.lvl;
+  const helpers={};
+  for(const h of (j.helpers||[])) if(h&&HELPERS[h.data]) helpers[h.data]={lvl:h.lvl||1, end:ts+(h.helper_cooldown||0)*1000};
+  const clock = j.boosts && j.boosts.clocktower_cooldown ? ts+j.boosts.clocktower_cooldown*1000 : 0;
+  const upTH=ups.filter(u=>u.id===ID_TH).map(u=>u.from), upBH=ups.filter(u=>u.id===ID_BH).map(u=>u.from);
+  const th=Math.max(maxLvl(inv,ID_TH),...upTH,0), bh=Math.max(maxLvl(inv,ID_BH),...upBH,0);
+  return {tag:String(j.tag||""), th, bh, inv, ups, eq, helpers, clock, cap:{b:Math.max(1,hut)+(bob?1:0), l:1, p:pet?1:0, bb:1+(otto?1:0), bl:1}, imp:ts};
+}
+function mergeImport(acc, parsed){
+  const old=[...(acc.ups||[])];
+  const ups=parsed.ups.map(nu=>{
+    const i=old.findIndex(o=>o.id===nu.id && o.from===nu.from);
+    if(i<0) return nu;
+    const o=old.splice(i,1)[0];
+    const sameEnd=Math.abs(o.end-nu.end)<5*60*1000;
+    return {...nu, u:o.u, nt: sameEnd ? o.nt : 0};
+  });
+  return {...acc, tag:parsed.tag||acc.tag, th:parsed.th, bh:parsed.bh, inv:parsed.inv, ups, eq:parsed.eq, helpers:parsed.helpers, clock:parsed.clock, cap:acc.capManual?acc.cap:parsed.cap, imp:parsed.imp};
+}
+function applyDone(acc, now){
+  const done=(acc.ups||[]).filter(u=>u.end<=now);
+  if(!done.length) return null;
+  const inv=JSON.parse(JSON.stringify(acc.inv||{}));
+  for(const u of done) addInv(inv,u.id,u.to,1);
+  let th=acc.th, bh=acc.bh;
+  for(const u of done){ if(u.id===ID_TH) th=Math.max(th,u.to); if(u.id===ID_BH) bh=Math.max(bh,u.to); }
+  const hist=[...done.map(u=>({id:u.id,to:u.to,end:u.end,m:"time"})), ...(acc.done||[])].slice(0,20);
+  return {...acc, inv, th, bh, ups:acc.ups.filter(u=>u.end>now), done:hist, _justDone:done};
+}
+/* Terminar una mejora antes de tiempo, como en el juego: con gemas o con el libro que toque */
+const FINISH = {gems:["Gemas","mi_gems"], build:["Libro de construcción","mi_build"], hero:["Libro de héroes","mi_hero"], fight:["Libro de pelea","mi_fight"], spell:["Libro de hechizos","mi_spell"], all:["Libro de todo","mi_all"], time:["Tiempo cumplido",null]};
+function finishOptions(up){
+  const g=(CAT[up.id]||{}).g||"";
+  if(g.startsWith("bb_")) return ["gems"];               // en la base del constructor no hay libros
+  if(g==="h_her") return ["hero","all","gems"];
+  if(g==="h_trp2"||g==="h_sie") return ["fight","all","gems"];
+  if(g==="h_spl") return ["spell","all","gems"];
+  if(g==="h_pet") return ["all","gems"];
+  return ["build","all","gems"];                           // edificios, trampas, muros, ayuntamiento
+}
+function finishUpgrade(acc, u, m, now){
+  const up=(acc.ups||[]).find(x=>x.u===u); if(!up) return acc;
+  const inv=JSON.parse(JSON.stringify(acc.inv||{}));
+  addInv(inv,up.id,up.to,1);
+  let th=acc.th, bh=acc.bh;
+  if(up.id===ID_TH) th=Math.max(th,up.to); if(up.id===ID_BH) bh=Math.max(bh,up.to);
+  const hist=[{id:up.id,to:up.to,end:now,m,saved:Math.max(0,up.end-now)}, ...(acc.done||[])].slice(0,20);
+  return {...acc, inv, th, bh, ups:acc.ups.filter(x=>x.u!==u), done:hist};
+}
+/* Boosts como en el juego: aceleran las mejoras en curso un tiempo a una velocidad x */
+const BOOSTS = {
+  bpot:{name:"Poción de constructor", icon:"mi_bpot", ws:["b"], speed:10, min:60, desc:"Constructores x10 durante 1 hora"},
+  appr:{name:"Aprendiz", icon:"h_93000000", ws:["b"], helper:93000000, one:true, min:60, desc:"Una mejora más rápida durante 1 hora"},
+  rpot:{name:"Poción de investigación", icon:"mi_rpot", ws:["l"], speed:24, min:60, desc:"Laboratorio x24 durante 1 hora"},
+  lass:{name:"Ayudante de laboratorio", icon:"h_93000001", ws:["l"], helper:93000001, one:true, min:60, desc:"La investigación más rápida durante 1 hora"},
+  ppot:{name:"Poción de mascotas", icon:"mi_ppot", ws:["p"], speed:24, min:60, desc:"Casa de mascotas x24 durante 1 hora"},
+  clock:{name:"Torre del reloj", icon:"clock", ws:["bb","bl"], speed:10, clock:true, desc:"Toda la base del constructor x10"},
+  cpot:{name:"Poción de torre del reloj", icon:"mi_cpot", ws:["bb","bl"], speed:10, min:30, desc:"Torre del reloj x10 durante 30 minutos"},
+};
+const BOOSTS_BY_W = {b:["bpot","appr"], l:["rpot","lass"], p:["ppot"], bb:["clock","cpot"], bl:["clock","cpot"]};
+function clockMinutes(acc){ const l=maxLvl(acc.inv||{},1000039); return l?12+2*l:14; }
+/* Tiempo que queda tras acelerar a speed x durante durMs */
+function boostedLeft(left, speed, durMs){ return left <= speed*durMs ? left/speed : left-(speed-1)*durMs; }
+function applyBoost(acc, key, now, opts={}){
+  const B=BOOSTS[key]; const durMs=(opts.min||B.min||clockMinutes(acc))*60000;
+  const speed = B.helper ? 1+(opts.lvl||((acc.helpers||{})[B.helper]||{}).lvl||1) : B.speed;
+  const changed=[];
+  const ups=(acc.ups||[]).map(u=>{
+    if(u.end<=now || !B.ws.includes(u.w)) return u;
+    if(B.one && u.u!==opts.target) return u;
+    const nl=Math.round(boostedLeft(u.end-now, speed, durMs)); changed.push({u:u.u, before:u.end-now, after:nl});
+    return {...u, end:now+nl};
+  });
+  let helpers=acc.helpers, clock=acc.clock;
+  if(B.helper && helpers && helpers[B.helper]) helpers={...helpers, [B.helper]:{...helpers[B.helper], end:now+23*3600000}};
+  // los boosts generales siguen activos un rato: lo que empieces mientras tanto también se acelera
+  let act=(acc.act||[]).filter(a=>a.to>now);
+  if(!B.one) act=[...act.filter(a=>a.k!==key), {k:key, ws:B.ws, speed, from:now, to:now+durMs}];
+  return {acc:{...acc, ups, helpers, clock, act}, changed, speed, durMs};
+}
+function startUpgrade(acc, id, from, durMs, now, u, gob){
+  const inv=JSON.parse(JSON.stringify(acc.inv||{}));
+  if(from>0) addInv(inv,id,from,-1);
+  const up={u:u||rid(), id, n:CAT[id].n, from, to:from+1, end:now+durMs, dur:durMs, w:CAT[id].w, nt:0};
+  if(gob) up.gob=true;
+  for(const a of (acc.act||[])) if(a.to>now && a.ws.includes(up.w)){ const nl=Math.round(boostedLeft(up.end-now, a.speed, a.to-now)); up.end=now+nl; up.boosted=(up.boosted||[]).concat(a.k); }
+  const plan=[...(acc.plan||[])]; const pi=plan.findIndex(p=>p.id===id&&p.from===from); if(pi>=0) plan.splice(pi,1);
+  return {acc:{...acc, inv, plan, ups:[...(acc.ups||[]), up]}, up};
+}
+function cancelUpgrade(acc, u){
+  const up=(acc.ups||[]).find(x=>x.u===u); if(!up) return acc;
+  const inv=JSON.parse(JSON.stringify(acc.inv||{}));
+  if(up.from>0) addInv(inv,up.id,up.from,1);
+  return {...acc, inv, ups:acc.ups.filter(x=>x.u!==u)};
+}
+function busy(acc, now){ const b={b:0,l:0,p:0,bb:0,bl:0}; for(const u of acc.ups||[]) if(u.end>now&&!u.gob) b[u.w]=(b[u.w]||0)+1; return b; }
+/* Constructor duende / investigador duende: trabajador extra que se usa pagando gemas, uno de cada */
+const GOBLIN = {b:"Constructor duende", l:"Investigador duende"};
+function goblinUp(acc, w, now){ return (acc.ups||[]).find(u=>u.gob&&u.w===w&&u.end>now)||null; }
+/* Cuándo queda libre el siguiente trabajador de cada tipo */
+function nextFree(acc, w, now){
+  const cap=(acc.cap||{})[w]||0; if(!cap) return null;
+  const ends=(acc.ups||[]).filter(u=>u.w===w&&u.end>now&&!u.gob).map(u=>u.end).sort((a,b)=>a-b);
+  if(ends.length<cap) return {free:cap-ends.length, at:now};
+  return {free:0, at:ends[0]};
+}
+/* Lo que falta para maximizar el ayuntamiento actual (o el taller) */
+function progress(acc, vil, now){
+  const lim=hallLevel(acc,vil); let cur=0, max=0, items=0;
+  const time={b:0,l:0,p:0,bb:0,bl:0}, cost={}, byG={};
+  const take=(id, lvl, startFrom, n)=>{
+    const c=CAT[id]; if(!c||vilOf(id)!==vil||c.g.endsWith("_wal")) return;
+    const m=maxAt(id,lim); if(m<=0) return;
+    cur+=Math.min(lvl,m)*n; max+=m*n;
+    const G=(byG[c.g]=byG[c.g]||{cur:0,max:0}); G.cur+=Math.min(lvl,m)*n; G.max+=m*n;
+    for(let x=startFrom; x<m; x++){ time[c.w]+=effDur(acc,id,x)*n; const k=c.res||"?"; cost[k]=(cost[k]||0)+catCost(id,x)*n; }
+    if(startFrom<m) items+=n;
+  };
+  for(const [id,lv] of Object.entries(acc.inv||{})) for(const [l,cnt] of Object.entries(lv)) take(+id,+l,+l,cnt);
+  for(const u of acc.ups||[]) if(vilOf(u.id)===vil){ take(u.id,u.from,u.to,1); const c=CAT[u.id]; if(c&&!c.g.endsWith("_wal")) time[u.w]+=Math.max(0,u.end-now); }
+  return {pct:max?cur/max:0, time, cost, items, lim, byG};
+}
+/* Horario de sueño: no se empieza nada entre esas horas */
+function sleepAdjust(ts, sl){
+  if(!sl || sl.from===sl.to) return ts;
+  const d=new Date(ts), h=d.getHours()+d.getMinutes()/60;
+  const inside = sl.from<sl.to ? (h>=sl.from && h<sl.to) : (h>=sl.from || h<sl.to);
+  if(!inside) return ts;
+  const w=new Date(d); w.setHours(Math.floor(sl.to), Math.round((sl.to%1)*60), 0, 0);
+  if(w.getTime()<=ts) w.setDate(w.getDate()+1);
+  return w.getTime();
+}
+/* Simula el plan: cada mejora va al primer trabajador de su tipo que quede libre */
+function simulatePlan(acc, vil, now, sl){
+  const slots={};
+  for(const w of VIL[vil].workers){
+    const cap=(acc.cap||{})[w]||0; if(!cap) continue;
+    const ends=(acc.ups||[]).filter(u=>u.w===w&&u.end>now&&!u.gob).map(u=>u.end).sort((a,b)=>a-b);
+    const arr=ends.slice(0,cap); while(arr.length<cap) arr.unshift(now);
+    slots[w]=arr.map(x=>({free:x}));
+  }
+  const rows=[]; let last=now, idle=0;
+  // disponibilidad de cada nivel: lo que ya tienes, lo que está mejorando y lo que acaba el propio plan
+  const have={}, avail={};
+  for(const [id,lv] of Object.entries(acc.inv||{})) for(const [l,n] of Object.entries(lv)) have[id+":"+l]=n;
+  for(const u of acc.ups||[]) (avail[u.id+":"+u.to]=avail[u.id+":"+u.to]||[]).push(Math.max(now,u.end));
+  for(const p of (acc.plan||[])){
+    const c=CAT[p.id]; if(!c||vilOf(p.id)!==vil) continue;
+    const sl_=slots[c.w]; if(!sl_){ rows.push({p, err:"No tienes este trabajador"}); continue; }
+    const key=p.id+":"+p.from; let dep=now;
+    if(p.from>0){
+      if(have[key]>0) have[key]--;
+      else if(avail[key]&&avail[key].length){ avail[key].sort((a,b)=>a-b); dep=avail[key].shift(); }
+    }
+    let bi=0; sl_.forEach((s,i)=>{ if(s.free<sl_[bi].free) bi=i; });
+    const ready=Math.max(now, sl_[bi].free, dep), start=sleepAdjust(ready, sl);
+    idle+=start-ready;
+    const dur=effDur(acc,p.id,p.from), end=start+dur;
+    sl_[bi].free=end; last=Math.max(last,end);
+    (avail[p.id+":"+(p.from+1)]=avail[p.id+":"+(p.from+1)]||[]).push(end);
+    rows.push({p, w:c.w, slot:bi+1, start, end, dur, wait:start-ready});
+  }
+  return {rows, last, idle};
+}
+function planFrom(acc, id, from, cnt){
+  let f=from;
+  for(let guard=0; guard<200; guard++){
+    const k=(acc.plan||[]).filter(p=>p.id===id&&p.from===f).length + (acc.ups||[]).filter(u=>u.id===id&&u.from===f).length*0;
+    if(k < Math.max(1,cnt)) return f;
+    f++; cnt=1;
+  }
+  return f;
+}
+/* Enlace de recordatorio si el trabajador sigue libre */
+function idleLink(topic, accName, up, hours){
+  if(!topic) return null;
+  const at=up.end + hours*3600*1000, now=Date.now();
+  if(at-now > NTFY_MAX_MS || at<=now+10000) return null;
+  const p=new URLSearchParams();
+  const vil=vilOf(up.id);
+  p.set("title", accName+": "+WORKER_SHORT[up.w].toLowerCase()+" sin trabajo");
+  p.set("message", "Lleva "+hours+" h libre desde que terminó "+(CAT[up.id]?CAT[up.id].n:"la mejora")+(vil==="bb"?" en la base del constructor":"")+". Pon otra mejora.");
+  p.set("tags","zzz"); p.set("priority","4");
+  p.set("at", String(Math.floor(at/1000)));
+  const s="i"+up.u; p.set("sequence-id", s); p.set("click", APP_URL);
+  return {url:"https://ntfy.sh/"+encodeURIComponent(topic)+"/publish?"+p.toString(), s, at, w:up.w};
+}
+/* Al empezar una mejora, reutiliza el id de un recordatorio de "trabajador libre" pendiente: ntfy lo sustituye y no llega */
+function takeIdle(acc, w, now){
+  const list=(acc.idle||[]).filter(x=>x.at>now);
+  const i=list.findIndex(x=>x.w===w);
+  if(i<0) return {idle:list, s:null};
+  const s=list[i].s; list.splice(i,1); return {idle:list, s};
+}
+/* Enlace de publicación de ntfy (GET): la página no puede hacer peticiones a otros servidores */
+function ntfyLink(topic, accName, up, now){
+  if(!topic || up.end<=now+10000) return null;
+  const final = up.end - now <= NTFY_MAX_MS;
+  const at = final ? up.end : now + NTFY_MAX_MS;
+  const name = CAT[up.id] ? CAT[up.id].n : "Mejora";
+  const where = vilOf(up.id)==="bb" ? " (Base del constructor)" : "";
+  const p=new URLSearchParams();
+  if(final){
+    p.set("title", accName+": "+name+" lista (nv "+up.to+")");
+    p.set("message", "Mejora terminada"+where+". "+WORKER_SHORT[up.w]+" libre.");
+    p.set("tags", isLab(up.w) ? "test_tube" : "hammer");
+  } else {
+    p.set("title", "Reprograma el aviso: "+name);
+    p.set("message", accName+": "+name+where+" termina "+fmtWhen(up.end)+". Abre la app y pulsa Programar aviso.");
+    p.set("tags", "hourglass");
+  }
+  p.set("at", String(Math.floor(at/1000)));
+  p.set("sequence-id", up.u);
+  p.set("click", APP_URL);
+  return {url:"https://ntfy.sh/"+encodeURIComponent(topic)+"/publish?"+p.toString(), until:at, final};
+}
+function ntfyDelete(topic, up){ return topic ? "https://ntfy.sh/"+encodeURIComponent(topic)+"/"+encodeURIComponent(up.u)+"/delete" : null; }
+function ntState(up, now){
+  if(up.end<=now) return {k:"done"};
+  if(up.nt && up.nt>=up.end) return {k:"ok", txt:"Aviso programado"};
+  if(up.nt && up.nt>now) return {k:"relay", txt:"Recordatorio "+fmtWhen(up.nt)};
+  return {k:"none", txt:"Sin aviso"};
+}
+
+/* ---------- almacenamiento ---------- */
+const S = {docs:{}, ready:false, mode:"loading", note:"", view:"all", vil:"h", upTab:{}, catQ:"", catG:"", catNew:false, catAll:false};
+let col=null; const writeChains={};
+/* La casa de mascotas solo cuenta si la cuenta la tiene construida (ayuntamiento 14+) */
+function hasPetHouse(a){ return !!((a.inv||{})["1000068"]) || (a.ups||[]).some(u=>u.id===1000068); }
+function accounts(){ return Object.entries(S.docs).filter(([k,v])=>k.startsWith("acc_")&&v).map(([k,v])=>({...v,_id:k,cap:{...(v.cap||{}), p:hasPetHouse(v)?1:0}})).sort((a,b)=>(b.th||0)-(a.th||0) || (b.bh||0)-(a.bh||0) || (a.order||0)-(b.order||0)); }
+function settings(){ return S.docs.settings || {}; }
+function localLoad(){ try{ return JSON.parse(localStorage.getItem("coc-avisos")||"{}"); }catch(e){ return {}; } }
+function localSave(){ try{ localStorage.setItem("coc-avisos", JSON.stringify(S.docs)); }catch(e){} }
+let nativeTimer=null;
+function nativeSave(){
+  clearTimeout(nativeTimer);
+  nativeTimer=setTimeout(async()=>{
+    try{ await P.Preferences.set({key:"coc-avisos", value:JSON.stringify(S.docs)}); }catch(e){ localSave(); }
+    syncNotifications();
+  },300);
+}
+function save(id, data){
+  if(data===null) delete S.docs[id]; else S.docs[id]=data;
+  render();
+  if(S.mode==="native"){ nativeSave(); return Promise.resolve(); }
+  if(S.mode==="local"){ localSave(); return Promise.resolve(); }
+  if(!col) return Promise.resolve();
+  const clean = data===null ? null : JSON.parse(JSON.stringify(data, (k,v)=>(k==="_id"||k==="_justDone")?undefined:v));
+  const prev = writeChains[id] || Promise.resolve();
+  const p = prev.then(()=> clean===null ? col.doc(id).delete() : col.doc(id).set(clean)).catch(e=>{
+    toast(e && e.code==="quota_exceeded" ? "No se pudo guardar: la base de datos está llena." : "No se pudo guardar el cambio. Revisa la conexión y vuelve a intentarlo.");
+  });
+  writeChains[id]=p; return p;
+}
+function saveAcc(acc){ const {_id, _justDone, ...rest}=acc; const raw=S.docs[_id]; if(raw&&raw.cap&&rest.cap===acc.cap) rest.cap={...rest.cap, b:raw.cap.b, l:raw.cap.l, p:raw.cap.p}; const p=save(_id, rest); syncIndex(); return p; }
+/* Lista de cuentas para las tareas programadas de avisos */
+function syncIndex(){
+  const ids=Object.keys(S.docs).filter(k=>k.startsWith("acc_")&&S.docs[k]).sort();
+  const cur=(S.docs.index||{}).accs||[];
+  if(ids.join(",")!==[...cur].sort().join(",")) save("index",{accs:ids});
+}
+async function initStore(){
+  if(NATIVE){
+    S.mode="native";
+    try{ const r=await P.Preferences.get({key:"coc-avisos"}); S.docs=r&&r.value?JSON.parse(r.value):localLoad(); }catch(e){ S.docs=localLoad(); }
+    S.ready=true; checkDone(); render(); initNotifications();
+    if(P.App){
+      P.App.addListener("appStateChange", st=>{ if(st.isActive){ checkDone(); render(); syncNotifications(); } });
+      P.App.addListener("backButton", ()=>{ if(document.querySelector("#modal-root .modal")) closeModal(); else if(S.view!=="all"){ S.view="all"; render(); } else P.App.exitApp(); });
+    }
+    return;
+  }
+  let db=null, uid=null;
+  try{
+    if(window.claude && typeof window.claude.use==="function"){
+      db = await window.claude.use("db");
+      const user = await window.claude.use("user");
+      uid = user ? await user.id() : null;
+    }
+  }catch(e){ db=null; }
+  if(db){
+    S.mode="db";
+    // Colección única "coc": la leen también las tareas programadas que mandan los avisos
+    col = db.collection("coc");
+    const timer=setTimeout(()=>{ if(!S.ready){ S.note="No se pueden cargar tus datos todavía. Revisa la conexión."; S.ready=true; render(); } },10000);
+    let first=true;
+    col.onSnapshot(snap=>{
+      const docs={}; snap.docs.forEach(d=>{ if(d.exists) docs[d.id]=d.data(); });
+      S.docs=docs; S.ready=true;
+      if(!snap.metadata.fromCache){ clearTimeout(timer); S.note=""; if(first){ first=false; checkDone(); } }
+      render();
+    }, err=>{ clearTimeout(timer); S.note="Se ha perdido la conexión con tus datos. Recarga la página."; S.ready=true; render(); });
+  } else {
+    S.mode="local"; S.docs=localLoad(); S.ready=true;
+    S.note="Esta vista no puede sincronizar con tu cuenta de Claude: los datos se guardan solo en este navegador.";
+    checkDone(); render();
+  }
+}
+/* Notificaciones del propio móvil: se reprograman todas cada vez que cambia algo */
+const NOTIF = {perm:null, exact:null};
+function nid(s){ let h=7; for(const ch of s) h=(h*31+ch.charCodeAt(0))|0; return Math.abs(h)%2000000000+1; }
+async function initNotifications(){
+  const LN=P.LocalNotifications; if(!LN) return;
+  try{
+    await LN.createChannel({id:"mejoras", name:"Mejoras terminadas", description:"Avisos cuando termina una mejora o queda libre un trabajador", importance:5, visibility:1, vibration:true});
+  }catch(e){}
+  try{ let p=await LN.checkPermissions(); if(p.display!=="granted") p=await LN.requestPermissions(); NOTIF.perm=p.display; }catch(e){ NOTIF.perm="unknown"; }
+  try{ const x=await LN.checkExactNotificationSetting(); NOTIF.exact=x.exact_alarm; }catch(e){}
+  render(); syncNotifications();
+}
+function plannedNotifications(now){
+  const list=[], st=settings(), idleOn=st.idleOn!==false, idleH=+(st.idleH||2);
+  const EMO={b:"⚒️",bb:"⚒️",l:"🧪",bl:"🧪",p:"🐾"};
+  const FREE={b:"Constructor libre",bb:"Constructor de la base libre",l:"Laboratorio libre",bl:"Laboratorio estelar libre",p:"Casa de mascotas libre"};
+  for(const a of accounts()){
+    for(const u of a.ups||[]){
+      if(u.end<=now+5000) continue;
+      const n=(CAT[u.id]||{}).n||u.n||"Mejora";
+      list.push({id:nid(u.u+":end"), title:`${EMO[u.w]||"⚒️"} ${a.name}: ${n} terminada`, body:`${stepTxt(u.id,u.from)} · ${u.gob?(GOBLIN[u.w]||"Duende")+" libre":FREE[u.w]||"Trabajador libre"}`, at:u.end});
+      if(idleOn && !u.gob){
+        const at=u.end+idleH*3600000, cap=(a.cap||{})[u.w]||0;
+        const busyThen=(a.ups||[]).filter(x=>x.w===u.w&&!x.gob&&x.end>at).length;
+        if(cap && busyThen<cap) list.push({id:nid(u.u+":idle"), title:`💤 ${a.name}: ${(WORKER_SHORT[u.w]||"trabajador").toLowerCase()} sin trabajo`, body:`Lleva ${idleH} h libre desde que terminó ${n}. Pon otra mejora.`, at});
+      }
+    }
+  }
+  return list;
+}
+let syncing=false, syncAgain=false;
+async function syncNotifications(){
+  const LN=P.LocalNotifications; if(!NATIVE||!LN) return;
+  if(syncing){ syncAgain=true; return; } syncing=true;
+  try{
+    const pend=await LN.getPending(); if(pend.notifications.length) await LN.cancel({notifications:pend.notifications.map(n=>({id:n.id}))});
+    const list=plannedNotifications(Date.now());
+    if(list.length) await LN.schedule({notifications:list.map(x=>({id:x.id, title:x.title, body:x.body, channelId:"mejoras", schedule:{at:new Date(x.at), allowWhileIdle:true}, extra:{view:"all"}}))});
+    S.notifCount=list.length;
+  }catch(e){ S.notifErr=String(e&&e.message||e); }
+  syncing=false; if(syncAgain){ syncAgain=false; syncNotifications(); }
+}
+async function testNotification(){
+  const LN=P.LocalNotifications; if(!LN) return;
+  await LN.schedule({notifications:[{id:999, title:"⚒️ Prueba de Clash Alerter", body:"Si ves esto, los avisos funcionan.", channelId:"mejoras", schedule:{at:new Date(Date.now()+5000), allowWhileIdle:true}}]});
+  toast("Te llegará un aviso de prueba en 5 segundos");
+}
+/* Copia de seguridad: pasar los datos de la web a la app (o al revés) */
+function backupJson(){ const d={}; for(const [k,v] of Object.entries(S.docs)) if(k.startsWith("acc_")||k==="settings"||k==="index") d[k]=v; return JSON.stringify({clashAlerter:1, docs:d}); }
+function restoreBackup(raw){
+  const j=JSON.parse(raw); if(!j||!j.docs) throw new Error("No es una copia de Clash Alerter.");
+  for(const [k,v] of Object.entries(j.docs)) save(k,v);
+}
+function checkDone(){
+  const now=Date.now();
+  for(const acc of accounts()){ const n=applyDone(acc,now); if(n){ const names=n._justDone.map(d=>CAT[d.id]?.n).filter(Boolean); saveAcc(n); toast(acc.name+": "+names.join(", ")+(names.length>1?" terminadas":" terminada")); } }
+}
+
+/* ---------- interfaz ---------- */
+function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),3400); }
+/* Color fijo por cuenta (según el orden en que se añadió) para distinguirlas en el Resumen */
+const ACC_COLORS=["#d9452f","#2f74d9","#2e9a4c","#8f45cf","#d1468a","#178f8f","#d9821a"];
+function accColor(a){ const ids=Object.entries(S.docs).filter(([k,v])=>k.startsWith("acc_")&&v).sort((x,y)=>(x[1].order||0)-(y[1].order||0)).map(([k])=>k); const i=ids.indexOf(a._id); return ACC_COLORS[(i<0?0:i)%ACC_COLORS.length]; }
+function accChip(a){ return `<span class="accchip" style="--ac:${accColor(a)}">${img("big_"+ID_TH,a.th||1)}${esc(a.name)}<i>TH${a.th||"?"}</i></span>`; }
+function curAcc(){ return accounts().find(a=>a._id===S.view) || null; }
+
+function workersHtml(acc, vil, now){
+  return `<div class="workers">${VIL[vil].workers.filter(w=>(acc.cap||{})[w]).map(w=>{
+    const nf=nextFree(acc,w,now), cap=acc.cap[w], used=cap-nf.free;
+    return `<div class="wk ${nf.free?"free":""}"><span class="k">${esc(WORKER[w])} ${cap>1?`<span class="num">${used}/${cap}</span>`:""}</span>
+      <span class="v">${nf.free?(nf.free===cap?"Libre":nf.free+" libre"+(nf.free>1?"s":"")):`Libre ${esc(fmtWhen(nf.at))}`}</span></div>`;
+  }).join("")}${vil==="h"?["b","l"].map(w=>{ const g=goblinUp(acc,w,now);
+    return `<div class="wk gobwk ${g?"":"free"}"><span class="k">${img("goblin_builder",0,"bi")} ${esc(GOBLIN[w])}</span><span class="v">${g?`Libre ${esc(fmtWhen(g.end))}`:"Disponible (gemas)"}</span></div>`; }).join(""):""}</div>`;
+}
+function helpersHtml(acc, vil, now){
+  const out=[];
+  if(vil==="h") for(const [id,h] of Object.entries(acc.helpers||{})){
+    const ready=h.end<=now;
+    out.push(`<div class="hp ${ready?"ready":""}">${img("h_"+id,0)}<div><b>${esc(HELPERS[id])}</b>${ready?"Disponible":`<span class="num" data-end="${h.end}" data-plain="1">${fmtCountdown(h.end-now)}</span>`}</div></div>`);
+  }
+  if(vil==="bb" && acc.clock){
+    const ready=acc.clock<=now;
+    out.push(`<div class="hp ${ready?"ready":""}">${img("clock",0)}<div><b>Torre del reloj</b>${ready?"Disponible":`<span class="num" data-end="${acc.clock}" data-plain="1">${fmtCountdown(acc.clock-now)}</span>`}</div></div>`);
+  }
+  return out.length?`<div><div class="acc-label" style="margin-bottom:6px">Ayudantes · según la última importación</div><div class="helpers">${out.join("")}</div></div>`:"";
+}
+function upRow(acc, up, now, showAcc){
+  const c=CAT[up.id]||{n:"Desconocido"};
+  const left=up.end-now, pct=up.dur?Math.min(100,Math.max(0,100*(1-left/up.dur))):0;
+  const vil=vilOf(up.id);
+  const al=((S.docs.alerts||{}).items||{})[up.u+":end"];
+  let ntHtml="", act="";
+  if(left>0){
+    if(NATIVE) ntHtml = NOTIF.perm==="granted" ? `<span class="nt ok">Aviso programado</span>` : `<span class="nt warn">Avisos desactivados</span>`;
+    else if(al && Math.abs(al.at-up.end)<5*60000) ntHtml=`<span class="nt ok">Aviso de Claude programado</span>`;
+    else ntHtml=`<span class="nt soft">Aviso automático: se programa ~2 h antes</span>`;
+  }
+  const st={k:left>0?"run":"done"};
+  if(st.k!=="done") act+=`<button class="btn finish" data-act="finish" data-acc="${esc(acc._id)}" data-u="${esc(up.u)}">${img(finishOptions(up)[0]==="gems"?"mi_gems":FINISH[finishOptions(up)[0]][1],0,"bi")}Terminar ya</button>`;
+  if(st.k!=="done") act+=`<button class="btn" data-act="adjust" data-acc="${esc(acc._id)}" data-u="${esc(up.u)}">Ajustar tiempo</button><button class="btn" data-act="cancel" data-acc="${esc(acc._id)}" data-u="${esc(up.u)}">Cancelar</button>`;
+  return `<div class="up ${up.w} ${vil==="bb"&&!isLab(up.w)?"bb":""} ${showAcc?"withacc":""}" ${showAcc?`style="--ac:${accColor(acc)}"`:""}>
+    <div class="tile">${img(up.id, up.to)}</div>
+    <div>
+      ${showAcc?`<div style="margin-bottom:4px">${accChip(acc)}</div>`:""}
+      <div class="name">${esc(c.n)}<span class="lvl">${esc(stepTxt(up.id,up.from))}</span></div>
+      <div class="meta"><span>${up.gob?`<b class="gobtag">${img("goblin_builder",0,"bi")}${esc(GOBLIN[up.w]||"Duende")}</b>`:esc(WORKER_SHORT[up.w]||"")}</span><span>Acaba ${esc(fmtWhen(up.end))}</span>${ntHtml}</div>
+      <div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>
+      ${act?`<div class="actions">${act}</div>`:""}
+    </div>
+    <div class="cd ${left<=0?"done":""}" data-end="${up.end}">${fmtCountdown(left)}</div>
+  </div>`;
+}
+/* Pestañas de "En curso" como en el juego: constructores, laboratorio, mascotas */
+const WTABS = {h:[["b","Constructores",1000015],["l","Laboratorio",1000007],["p","Mascotas",1000068]], bb:[["bb","Constructores",1000015],["bl","Laboratorio estelar",1000046]]};
+function upsTabsHtml(key, vil, pairs, now, showAcc, accForCap){
+  const accs=accForCap?[accForCap]:[...new Set(pairs.map(p=>p[0]))];
+  const anyPet=accForCap?hasPetHouse(accForCap):accounts().some(hasPetHouse);
+  const tabs=WTABS[vil].filter(([w])=>w!=="p"||anyPet||pairs.some(([a,u])=>u.w==="p"));
+  const cnt=w=>pairs.filter(([a,u])=>u.w===w).length;
+  let cur=S.upTab[key];
+  if(!cur||!tabs.some(x=>x[0]===cur)){ const f=tabs.find(x=>cnt(x[0])); cur=f?f[0]:tabs[0][0]; }
+  const list=pairs.filter(([a,u])=>u.w===cur).sort((x,y)=>x[1].end-y[1].end);
+  const lvlImg=id=>{ const a=accForCap||null; const l=a?Math.max(1,(()=>{const o=(a.inv||{})[String(id)];return o?Math.max(...Object.keys(o).map(Number)):1;})()):1; return img(id,l); };
+  let emptyMsg="Nada en marcha.";
+  if(accForCap){ const cap=(accForCap.cap||{})[cur]||0;
+    if(!cap) emptyMsg = cur==="p" ? "Aún no tienes casa de mascotas (se desbloquea en el ayuntamiento 14)." : "No tienes este trabajador.";
+    else emptyMsg = cur==="b"||cur==="bb" ? "Tus constructores están libres. Elige abajo lo que acabas de empezar." : "Libre. Elige abajo la investigación que acabas de empezar."; }
+  const actives = accForCap ? (accForCap.act||[]).filter(a=>a.to>now && a.ws.includes(cur)) : [];
+  const boostBar = accForCap && (pairs.some(([a,u])=>u.w===cur) || actives.length) ? `<div class="bbar">${actives.map(a=>`<span class="actb">${img(BOOSTS[a.k].icon,0,"bi")}${esc(BOOSTS[a.k].name)} activo · <span class="num" data-end="${a.to}" data-plain="1">${fmtCountdown(a.to-now)}</span></span>`).join("")}${(BOOSTS_BY_W[cur]||[]).map(k=>`<button class="btn bst" data-act="boost" data-k="${k}" data-acc="${esc(accForCap._id)}" data-w="${cur}">${img(BOOSTS[k].icon,0,"bi")}${esc(BOOSTS[k].name)}</button>`).join("")}</div>` : "";
+  return `<div class="wtabs" role="tablist">${tabs.map(([w,n,id])=>`<button class="wtab" role="tab" aria-selected="${w===cur}" data-act="uptab" data-k="${esc(key)}" data-w="${w}">${lvlImg(id)}<span>${esc(n)}</span><b>${cnt(w)}</b></button>`).join("")}</div>
+    ${boostBar}
+    ${list.length?`<div class="list">${list.map(([a,u])=>upRow(a,u,now,showAcc)).join("")}</div>`:`<div class="empty">${esc(emptyMsg)}</div>`}`;
+}
+function ringSvg(p, col){
+  const r=38, C=2*Math.PI*r, v=Math.max(0,Math.min(1,p));
+  return `<svg class="ring" viewBox="0 0 92 92" role="img" aria-label="${Math.floor(v*100)}% completado">
+    <circle cx="46" cy="46" r="${r}" fill="none" stroke="var(--line)" stroke-width="9"/>
+    <circle cx="46" cy="46" r="${r}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${(C*v).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 46 46)"/>
+    <text x="46" y="53" text-anchor="middle" font-size="21">${Math.floor(v*100)}%</text></svg>`;
+}
+function progressHtml(acc, vil, now){
+  const p=progress(acc,vil,now); if(!p.lim) return "";
+  const cap=acc.cap||{};
+  const ws=VIL[vil].workers.filter(w=>p.time[w]>0);
+  const costs=Object.entries(p.cost).filter(([,v])=>v>0);
+  return `<div class="panel">
+    <div class="panel-head"><h2>Progreso de ${esc(VIL[vil].hall.toLowerCase())} ${p.lim}</h2><span class="muted small">Sin contar muros</span></div>
+    <div class="prog">${ringSvg(p.pct, vil==="bb"?"var(--night)":"var(--gold)")}
+      <div class="small">${p.items?`Te quedan <b>${p.items}</b> mejoras para tenerlo todo al máximo en ${esc(VIL[vil].hall.toLowerCase())} ${p.lim}.`:"Todo al máximo para tu nivel. Toca subir el "+esc(VIL[vil].hall.toLowerCase())+"."}</div>
+    </div>
+    ${ws.length?`<div class="stats">${ws.map(w=>{ const n=cap[w]||1; return `<div class="stat"><div class="k">${esc(WORKER[w])}${n>1?` (${n})`:""}</div><div class="v">${fmtDur(p.time[w]/n)}</div></div>`; }).join("")}</div>`:""}
+    ${costs.length?`<div><div class="acc-label" style="margin-bottom:4px">Recursos que faltan</div><div class="costs">${costs.map(([r,v])=>`<span class="cost">${resIcon(r)}${fmtNum(v)}</span>`).join("")}</div></div>`:""}
+    <div><div class="acc-label" style="margin-bottom:6px">Por categoría</div><div class="cats">${GROUPS.filter(([g])=>p.byG[g]&&p.byG[g].max).map(([g,n])=>{ const G=p.byG[g], pc=G.cur/G.max;
+      return `<div class="catrow"><span class="cn">${esc(n)}</span><span class="cb"><i style="width:${(pc*100).toFixed(1)}%;background:${pc>=1?"var(--ok)":pc<.6?"var(--warn)":(vil==="bb"?"var(--night)":"var(--gold)")}"></i></span><span class="cp num">${Math.floor(pc*100)}%</span></div>`; }).join("")}</div></div>
+  </div>`;
+}
+/* Planificador de recursos: qué necesitas y para cuándo, siguiendo el orden del plan */
+function lootHtml(rows, now){
+  const ok=rows.filter(r=>!r.err&&catCost(r.p.id,r.p.from));
+  if(!ok.length) return "";
+  const resOf=r=>{ const c=CAT[r.p.id]; return (c.sc&&r.p.from>=c.sc)?(c.scres||c.res):c.res; };
+  const tot={}, day={}, acc={};
+  ok.forEach(r=>{ const k=resOf(r), v=catCost(r.p.id,r.p.from); tot[k]=(tot[k]||0)+v; if(r.start<=now+86400000) day[k]=(day[k]||0)+v; });
+  const line=o=>Object.entries(o).map(([k,v])=>`<span class="cost">${resIcon(k)}${fmtNum(v)}</span>`).join("")||`<span class="muted small">nada</span>`;
+  const steps=ok.slice().sort((a,b)=>a.start-b.start).map(r=>{ const k=resOf(r); acc[k]=(acc[k]||0)+catCost(r.p.id,r.p.from);
+    return `<div class="lstep"><span class="lw">${esc(r.start<=now+60000?"ahora":fmtWhen(r.start))}</span><span>${esc(CAT[r.p.id].n)}</span><span class="cost">${resIcon(k)}${fmtNum(catCost(r.p.id,r.p.from))}</span><span class="muted small">acumulado ${fmtNum(acc[k])}</span></div>`; }).join("");
+  return `<details class="loot"><summary>Recursos del plan</summary>
+    <div class="lsum"><div><div class="acc-label">Próximas 24 h</div><div class="costs">${line(day)}</div></div><div><div class="acc-label">Plan completo</div><div class="costs">${line(tot)}</div></div></div>
+    <div class="lsteps">${steps}</div></details>`;
+}
+function planHtml(acc, vil, now){
+  const sl=settings().sleep||{from:0,to:8};
+  const sim=simulatePlan(acc,vil,now,sl);
+  const rows=sim.rows;
+  const all=acc.plan||[];
+  return `<div class="panel">
+    <div class="panel-head"><h2>Plan</h2><span class="muted small">${rows.length?`Terminas el plan ${esc(fmtWhen(sim.last))}`:"Añade mejoras con el botón + Plan del catálogo"}</span></div>
+    ${rows.length?`<div class="list">${rows.map((r,i)=>{
+      const c=CAT[r.p.id], idx=all.indexOf(r.p);
+      if(r.err) return `<div class="prow"><div class="tile sm">${img(r.p.id,r.p.from+1)}</div><div><div class="nm">${esc(c.n)}</div><div class="sub">${esc(r.err)}</div></div><div class="pbtns"><button class="btn icon" data-act="pdel" data-acc="${esc(acc._id)}" data-i="${idx}" aria-label="Quitar">✕</button></div></div>`;
+      const startsNow=r.start<=now+60000;
+      return `<div class="prow ${r.w}">
+        <div class="tile sm">${img(r.p.id,r.p.from+1)}</div>
+        <div><div class="nm">${esc(c.n)}<span class="lvl">${esc(stepTxt(r.p.id,r.p.from))}</span></div>
+          <div class="sub">${catCost(r.p.id,r.p.from)?`<span class="cost">${resIcon(CAT[r.p.id].c&&CAT[r.p.id].sc&&r.p.from>=CAT[r.p.id].sc?(CAT[r.p.id].scres||CAT[r.p.id].res):CAT[r.p.id].res)}${fmtNum(catCost(r.p.id,r.p.from))}</span>`:""}<span>${esc(WORKER_SHORT[r.w])}${(acc.cap[r.w]||1)>1?" "+r.slot:""}</span><span>${startsNow?"<b class='okt'>Puedes empezarla ya</b>":"Empieza "+esc(fmtWhen(r.start))}</span><span>Acaba ${esc(fmtWhen(r.end))}</span><span>${fmtDur(r.dur)}</span>${r.wait>0?`<span class="muted">espera al despertar</span>`:""}</div></div>
+        <div class="pbtns">
+          ${startsNow?`<button class="btn primary ${isLab(r.w)?"l":(r.w==="bb"?"bb":"")}" data-act="start" data-acc="${esc(acc._id)}" data-id="${r.p.id}" data-from="${r.p.from}">Empezar</button>`:""}
+          <button class="btn icon" data-act="pmove" data-acc="${esc(acc._id)}" data-i="${idx}" data-d="-1" aria-label="Subir" ${i===0?"disabled":""}>↑</button>
+          <button class="btn icon" data-act="pmove" data-acc="${esc(acc._id)}" data-i="${idx}" data-d="1" aria-label="Bajar" ${i===rows.length-1?"disabled":""}>↓</button>
+          <button class="btn icon" data-act="pdel" data-acc="${esc(acc._id)}" data-i="${idx}" aria-label="Quitar">✕</button>
+        </div></div>`;
+    }).join("")}</div>
+    ${lootHtml(rows, now)}
+    ${sl&&sl.from!==sl.to?`<div class="small muted">No se programa nada entre las ${sl.from}:00 y las ${sl.to}:00 (horario de sueño, en Ajustes del Resumen).</div>`:""}
+    <div class="actions"><button class="btn" data-act="pclear" data-acc="${esc(acc._id)}">Vaciar plan</button></div>`:`<div class="empty">Sin plan. Pulsa <b>+ Plan</b> en las mejoras que quieras hacer después y verás cuándo empieza y acaba cada una.</div>`}
+  </div>`;
+}
+function catalogItems(acc, vil){
+  const inv=acc.inv||{}, out=[], lim=hallLevel(acc,vil);
+  if(S.catNew){
+    for(const [id,c] of Object.entries(CAT)){
+      if(vilOf(+id)!==vil||!(c.w==="b"||c.w==="bb")||c.g.endsWith("_her")) continue;
+      if(!canUpgrade(+id,0)) continue;
+      out.push({id:+id,from:0,cnt:0,lock:reqLevel(+id,0)>lim});
+    }
+  } else {
+    for(const [id,lv] of Object.entries(inv)){
+      const c=CAT[id]; if(!c||vilOf(+id)!==vil) continue;
+      for(const [l,cnt] of Object.entries(lv)){
+        const from=+l; if(!canUpgrade(+id,from)) continue;
+        out.push({id:+id,from,cnt,lock:reqLevel(+id,from)>lim});
+      }
+    }
+    // edificios que tu ayuntamiento permite y aún no has construido (p. ej. la segunda torre de hechizos)
+    const allowed=(MAXC[vil==="bb"?ID_BH:ID_TH]||{})[String(lim)]||{};
+    for(const [id,max] of Object.entries(allowed)){
+      const c=CAT[id]; if(!c||c.g.endsWith("_wal")||!canUpgrade(+id,0)) continue;
+      const owned=Object.values(inv[id]||{}).reduce((s,n)=>s+n,0)+(acc.ups||[]).filter(u=>u.id===+id).length;
+      if(max-owned>0) out.push({id:+id,from:0,cnt:max-owned,lock:false,isNew:true});
+    }
+    for(const u of acc.ups||[]){
+      if(vilOf(u.id)!==vil||!canUpgrade(u.id,u.to)) continue;
+      if(out.some(x=>x.id===u.id&&x.from===u.to)) continue;
+      out.push({id:u.id,from:u.to,cnt:1,lock:reqLevel(u.id,u.to)>lim,busy:true});
+    }
+  }
+  const q=S.catQ.trim().toLowerCase();
+  return out.filter(x=>(S.catAll||!x.lock) && (!q||CAT[x.id].n.toLowerCase().includes(q)));
+}
+function catalogHtml(acc, vil){
+  const allItems=catalogItems(acc,vil);
+  const cnt={}; allItems.forEach(x=>{cnt[CAT[x.id].g]=(cnt[CAT[x.id].g]||0)+1});
+  const groups=GROUPS.filter(([g])=>g.startsWith(vil+"_")&&cnt[g]);
+  const q=S.catQ.trim();
+  let g=S.catG; if(!q && (!g||g==="all"||!cnt[g]) && g!=="all") g=groups.length?groups[0][0]:"all";
+  if(q) g="all";
+  const items=g==="all"?allItems:allItems.filter(x=>CAT[x.id].g===g);
+  const byG={}; items.forEach(x=>{(byG[CAT[x.id].g]=byG[CAT[x.id].g]||[]).push(x)});
+  const rep_=gg=>{ const x=allItems.filter(i=>CAT[i.id].g===gg).sort((a,b)=>b.from-a.from)[0]; return x?img(x.id,Math.max(1,x.from)):""; };
+  return `<div class="panel">
+    <div class="panel-head"><h2>Empezar mejora</h2><span class="muted small">Tiempos del juego${gpFor(acc,"b")||gpFor(acc,"l")?" con tu descuento":""}</span></div>
+    <label for="cat-q">Buscar en todas las categorías<input id="cat-q" type="search" placeholder="${vil==="bb"?"Megamina, Bruja nocturna…":"Cañón, Reina, Rayo…"}" value="${esc(S.catQ)}"></label>
+    <div class="ctabs" role="tablist" aria-label="Tipo de mejora">
+      ${groups.map(([gg,n])=>`<button class="ctab" role="tab" aria-selected="${g===gg}" data-act="catg" data-g="${gg}">${rep_(gg)}<span>${esc(n)}</span><b>${cnt[gg]}</b></button>`).join("")}
+      <button class="ctab" role="tab" aria-selected="${g==="all"}" data-act="catg" data-g="all"><span>Todo</span><b>${allItems.length}</b></button>
+    </div>
+    <div class="row">
+      <label class="check" for="cat-all"><input id="cat-all" type="checkbox" ${S.catAll?"checked":""}> Ver también lo que pide más nivel</label>
+    </div>
+    ${items.length?GROUPS.filter(([g])=>byG[g]).map(([g,n])=>`<div class="group">${Object.keys(byG).length>1?`<h3>${esc(n)}</h3>`:""}<div class="items">${groupById(byG[g]).map(([id,rows])=>{
+      const c=CAT[id], have=rows.filter(x=>!x.busy&&!x.isNew).reduce((s,x)=>s+x.cnt,0);
+      const busyN=(acc.ups||[]).filter(u=>u.id===id&&u.end>Date.now()).length;
+      const top=Math.max(...rows.map(x=>x.from));
+      return `<div class="igroup">
+        <div class="ihead"><div class="tile sm">${img(id, Math.max(1,top))}</div><div><div class="nm">${esc(c.n)}</div>
+          <div class="sub">${S.catNew?"Construir nuevo":[have?`${have} disponible${have===1?"":"s"}`:"",busyN?`${busyN} mejorando`:""].filter(Boolean).join(" · ")}</div></div></div>
+        <div class="ilevels">${rows.map(x=>{ const d=effDur(acc,x.id,x.from), cost=catCost(x.id,x.from);
+          return `<div class="ilvl ${x.lock?"locked":""}">
+            <div class="lvtxt"><span class="lvl ${CAT[x.id].sc&&x.from>=CAT[x.id].sc?"sc":""}">${x.from===0?"Construir nuevo":esc(stepTxt(x.id,x.from))}</span>${x.isNew?`<span class="small muted">${x.cnt>1?`te faltan ${x.cnt}`:"te falta 1"}</span>`:(x.cnt>1?`<b class="cnt">×${x.cnt}</b>`:"")}${x.busy?`<span class="small muted">cuando acabe la actual</span>`:""}${x.lock?`<span class="small muted">pide nivel ${reqLevel(x.id,x.from)}</span>`:""}</div>
+            <div class="lvinfo"><span class="t">${fmtDur(d)}</span>${cost?`<span class="cost">${resIcon(c.res)}${fmtNum(cost)}</span>`:""}</div>
+            <div class="gobtns"><button class="btn" data-act="padd" data-acc="${esc(acc._id)}" data-id="${x.id}" data-from="${x.from}" data-cnt="${x.cnt}">+ Plan</button>${x.busy?"":`<button class="btn" data-act="start" data-acc="${esc(acc._id)}" data-id="${x.id}" data-from="${x.from}">Empezar</button>`}</div>
+          </div>`; }).join("")}</div>
+      </div>`;
+    }).join("")}</div></div>`).join(""):`<div class="empty">${Object.keys(acc.inv||{}).length?"No hay nada que coincida con el filtro.":"Importa el JSON de esta cuenta para cargar tus niveles."}</div>`}
+  </div>`;
+}
+/* Junta las filas del mismo edificio/tropa: todos los cañones en una tarjeta */
+function groupById(rows){
+  const m=new Map();
+  rows.slice().sort((a,b)=>CAT[a.id].n.localeCompare(CAT[b.id].n,"es")||a.from-b.from).forEach(x=>{ if(!m.has(x.id)) m.set(x.id,[]); m.get(x.id).push(x); });
+  return [...m.entries()];
+}
+/* Equipamiento de héroes: se mejora al instante en la herrería, aquí solo se sigue */
+function eqMax(id, bs, th){ const e=EQ[id]; let m=1; for(let L=1; L<=e.bs.length; L++){ if(e.bs[L-1]<=bs && e.th[L-1]<=th) m=L; else break; } return m; }
+function oreRow(o){ const ks=["shiny_ore","glowy_ore","starry_ore"]; return o.map((v,i)=>v?`<span class="cost">${img("res_"+ks[i],0,"bi")}${fmtNum(v)}</span>`:"").join(""); }
+function equipmentHtml(acc){
+  const eq=acc.eq||{}; const ids=Object.keys(eq).filter(id=>EQ[id]);
+  if(!ids.length) return `<details class="panel"><summary>Equipamiento de héroes</summary><div class="empty">Reimporta el JSON de esta cuenta para cargar tu equipamiento.</div></details>`;
+  const bs=maxLvl(acc.inv||{},ID_SMITH), th=acc.th||0;
+  const tot=[0,0,0]; const byHero={};
+  ids.forEach(id=>{ const e=EQ[id], l=eq[id], m=eqMax(id,bs,th); const need=[0,0,0]; for(let x=l; x<m; x++) e.c[x-1].forEach((v,i)=>need[i]+=v); need.forEach((v,i)=>tot[i]+=v); (byHero[e.h]=byHero[e.h]||[]).push({id,l,m,need,next:l<m?e.c[l-1]:null}); });
+  return `<details class="panel"><summary>Equipamiento de héroes</summary>
+    <div class="small muted">Herrería nivel ${bs||"?"}. Los máximos son los que permite tu herrería ahora mismo.</div>
+    <div><div class="acc-label" style="margin-bottom:4px">Mineral que te falta para subirlo todo</div><div class="costs">${oreRow(tot)||`<span class="okt small">Todo al máximo</span>`}</div></div>
+    ${Object.entries(byHero).map(([h,list])=>`<div class="group"><h3>${esc(h)}</h3><div class="items">${list.sort((a,b)=>EQ[b.id].e-EQ[a.id].e||b.l-a.l).map(x=>`<div class="eqi ${EQ[x.id].e?"epic":""}">
+      <div class="tile sm">${img("eq_"+x.id,0)}</div>
+      <div><div class="nm">${esc(EQ[x.id].n)} <span class="lvl">${x.l}/${x.m}</span></div><div class="sub">${x.next?`Siguiente: ${oreRow(x.next)}`:"Al máximo"}</div></div>
+      ${x.next?`<button class="btn icon" data-act="equp" data-acc="${esc(acc._id)}" data-id="${x.id}" aria-label="Subir un nivel">+1</button>`:""}
+    </div>`).join("")}</div></div>`).join("")}
+  </details>`;
+}
+/* Muros: también instantáneos; cuántos te quedan de cada nivel y lo que cuestan */
+function wallsHtml(acc, vil){
+  const id=vil==="bb"?ID_WALL2:ID_WALL, c=CAT[id]; if(!c) return "";
+  const inv=(acc.inv||{})[String(id)]||{}; const lim=hallLevel(acc,vil); if(!lim) return "";
+  let m=0; for(let L=1; L<=c.c.length; L++){ if((c.r[L-1]||0)<=lim) m=L; else break; }
+  const levels=Object.entries(inv).map(([l,n])=>[+l,n]).filter(([,n])=>n>0).sort((a,b)=>b[0]-a[0]);
+  const total=levels.reduce((s,[,n])=>s+n,0); if(!total) return "";
+  const done=levels.filter(([l])=>l>=m).reduce((s,[,n])=>s+n,0);
+  let gold=0; levels.forEach(([l,n])=>{ for(let x=l; x<m; x++) gold+=catCost(id,x)*n; });
+  const sum=levels.reduce((s,[l,n])=>s+Math.min(l,m)*n,0), pc=total?sum/(total*m):1;
+  return `<details class="panel"><summary>Muros · ${Math.floor(pc*100)}%</summary>
+    <div class="small">${done} de ${total} muros al máximo de tu nivel (nivel ${m}).${gold?` Te faltan <span class="cost">${resIcon(c.res||"Gold")}${fmtNum(gold)}</span>${vil==="h"?" en oro o elixir":""}.`:""}</div>
+    <div class="walls">${levels.map(([l,n])=>`<div class="wall ${l>=m?"max":""}"><div class="tile sm">${img(id,l)}</div>
+      <div><div class="nm">Nivel ${l} <b class="cnt">×${n}</b></div><div class="sub">${l<m?`Siguiente: <span class="cost">${resIcon(c.res||"Gold")}${fmtNum(catCost(id,l))}</span> cada uno`:"Al máximo"}</div></div>
+      ${l<m?`<div class="wup"><input type="number" min="1" max="${n}" value="1" id="wn-${l}-${esc(acc._id)}" aria-label="Cuántos muros"><button class="btn" data-act="wallup" data-acc="${esc(acc._id)}" data-id="${id}" data-l="${l}">Subir</button></div>`:""}
+    </div>`).join("")}</div>
+  </details>`;
+}
+/* Antes de dormir: para cada trabajador libre, la mejora que mejor cubre la noche */
+function nightHtml(acc, vil, now){
+  const sl=settings().sleep||{from:0,to:8}; if(sl.from===sl.to) return "";
+  // próxima hora de despertarse
+  const wake=new Date(now); wake.setHours(sl.to,0,0,0); if(wake.getTime()<=now) wake.setDate(wake.getDate()+1);
+  const bed=new Date(wake); bed.setDate(bed.getDate()-(sl.from>sl.to?1:0)); bed.setHours(sl.from,0,0,0);
+  const toBed=bed.getTime()-now;
+  if(toBed>4*3600000 && !(now>=bed.getTime()&&now<wake.getTime())) return "";   // solo se muestra en las 4 h antes de acostarte
+  const need=wake.getTime()-now;
+  const items=catalogItems(acc,vil).filter(x=>!x.lock&&!x.busy);
+  const blocks=VIL[vil].workers.filter(w=>(acc.cap||{})[w]).map(w=>{
+    const free=nextFree(acc,w,now); if(!free||!free.free) return "";
+    const cand=items.filter(x=>CAT[x.id].w===w).map(x=>({...x,d:effDur(acc,x.id,x.from)})).filter(x=>x.d>0);
+    if(!cand.length) return "";
+    const fit=cand.filter(x=>x.d>=need).sort((a,b)=>a.d-b.d), short=cand.filter(x=>x.d<need).sort((a,b)=>b.d-a.d);
+    const inPlan=x=>(acc.plan||[]).some(p=>p.id===x.id&&p.from===x.from);
+    const pick=[...fit.filter(inPlan),...fit,...short].filter((x,i,a)=>a.findIndex(y=>y.id===x.id&&y.from===x.from)===i).slice(0,Math.min(3,free.free+1));
+    return `<div><div class="acc-label" style="margin-bottom:4px">${esc(WORKER[w])} · ${free.free} libre${free.free>1?"s":""}</div><div class="list">${pick.map(x=>`<div class="nrow">
+      <div class="tile sm">${img(x.id,Math.max(1,x.from))}</div>
+      <div><div class="nm">${esc(CAT[x.id].n)} <span class="lvl">${esc(x.from?stepTxt(x.id,x.from):"Nuevo")}</span></div>
+      <div class="sub">${fmtDur(x.d)} · acaba ${esc(fmtWhen(now+x.d))}${x.d>=need?` · <b class="okt">cubre la noche</b>`:` · <span>acaba antes de despertarte</span>`}${inPlan(x)?" · en tu plan":""}</div></div>
+      <button class="btn" data-act="start" data-acc="${esc(acc._id)}" data-id="${x.id}" data-from="${x.from}">Empezar</button></div>`).join("")}</div></div>`;
+  }).join("");
+  if(!blocks) return "";
+  return `<div class="panel night-sug"><div class="panel-head"><h2>Antes de dormir</h2><span class="muted small">Te levantas ${esc(fmtWhen(wake.getTime()))}</span></div>
+    <div class="small muted">Mejoras que duran al menos hasta que te levantes, para que nadie se quede parado por la noche.</div>${blocks}</div>`;
+}
+function historyHtml(acc, vil){
+  const list=(acc.done||[]).filter(d=>CAT[d.id]&&vilOf(d.id)===vil).slice(0,8);
+  if(!list.length) return "";
+  return `<details class="panel"><summary>Terminadas hace poco</summary><div class="list">${list.map(d=>{
+    const f=FINISH[d.m||"time"]||FINISH.time;
+    return `<div class="hrow"><div class="tile sm">${img(d.id,d.to)}</div>
+      <div><div class="nm">${esc(CAT[d.id].n)}<span class="lvl">nv ${d.to}</span></div><div class="sub">${esc(fmtWhen(d.end))}${d.saved?` · ahorrado ${fmtDur(d.saved)}`:""}</div></div>
+      <span class="how ${d.m&&d.m!=="time"?"used":""}">${f[1]?img(f[1],0,"bi"):""}${esc(f[0])}</span></div>`;
+  }).join("")}</div></details>`;
+}
+function boostHtml(acc){
+  const gp=acc.gp||{}, a=esc(acc._id);
+  const sel=(k,label)=>`<label class="boost" for="gp${k}-${a}">${img(k==="b"?"mi_build":"mi_spell",0,"bi")}<span>${label}</span>
+    <select id="gp${k}-${a}" data-boost="${k}" data-acc="${a}">${[0,5,10,15,20,25,30].map(v=>`<option value="${v}" ${(+gp[k]||0)===v?"selected":""}>${v ? "−"+v+" %" : "Sin boost"}</option>`).join("")}</select></label>`;
+  return `<div class="boosts"><span class="acc-label">Pase de oro</span>${sel("b","Construcción")}${sel("l","Investigación")}</div>`;
+}
+function renderAcc(acc, now){
+  const vil=S.vil;
+  const ups=(acc.ups||[]).filter(u=>vilOf(u.id)===vil).sort((a,b)=>a.end-b.end);
+  return `
+  <div class="panel">
+    <div class="hero">${img("big_"+(vil==="bb"?ID_BH:ID_TH), hallLevel(acc,vil)||1, "th")}
+      <div><h2 style="font-size:24px">${esc(acc.name)}</h2>
+      <div class="tag">${acc.th?`Ayuntamiento ${acc.th}`:""}${acc.bh?` · Taller ${acc.bh}`:""}${acc.tag?` · ${esc(acc.tag)}`:""}</div>
+      ${acc.imp?`<div class="tag">Última importación: ${esc(fmtWhen(acc.imp))}</div>`:""}</div>
+    </div>
+    <div class="seg" role="group" aria-label="Aldea">
+      <button aria-pressed="${vil==="h"}" data-act="vil" data-v="h">${img("big_"+ID_TH, acc.th||1)}Aldea principal</button>
+      <button class="bb" aria-pressed="${vil==="bb"}" data-act="vil" data-v="bb">${img("big_"+ID_BH, acc.bh||1)}Base del constructor</button>
+    </div>
+    ${vil==="h"?boostHtml(acc):""}
+    ${workersHtml(acc,vil,now)}
+    ${helpersHtml(acc,vil,now)}
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>En curso</h2><span class="muted small">${esc(VIL[vil].name)}</span></div>
+    ${upsTabsHtml(acc._id+":"+vil, vil, ups.map(u=>[acc,u]), now, false, acc)}
+  </div>
+  ${nightHtml(acc,vil,now)}
+  ${historyHtml(acc,vil)}
+  ${planHtml(acc,vil,now)}
+  ${progressHtml(acc,vil,now)}
+  ${catalogHtml(acc,vil)}
+  ${wallsHtml(acc,vil)}
+  ${vil==="h"?equipmentHtml(acc):""}
+  ${accSettings(acc)}`;
+}
+/* ¿Está todo el mundo trabajando? Ocupados / total por tipo y quién tiene huecos */
+function occupancyHtml(accs, vil, now){
+  const ws=VIL[vil].workers.filter(w=>accs.some(a=>(a.cap||{})[w]));
+  let freeTotal=0;
+  const cells=ws.map(w=>{
+    let used=0, cap=0; const free=[];
+    accs.forEach(a=>{ const c=(a.cap||{})[w]||0; if(!c) return; const b=Math.min(c,busy(a,now)[w]||0); used+=b; cap+=c; if(c-b>0) free.push([a,c-b]); });
+    freeTotal+=cap-used;
+    return `<div class="occ ${cap-used?"has":"full"}"><span class="k">${esc(WORKER[w])}</span><span class="v num">${used}/${cap}</span>
+      ${free.length?`<span class="who">${free.map(([a,n])=>`<button class="accchip linkchip" style="--ac:${accColor(a)}" data-act="view" data-v="${esc(a._id)}">${esc(a.name)} · ${n} libre${n>1?"s":""}</button>`).join("")}</span>`:`<span class="ok">Todos ocupados</span>`}</div>`;
+  }).join("");
+  return `<div class="occbar ${freeTotal?"":"allbusy"}">${freeTotal?`<div class="occhead">Tienes <b>${freeTotal}</b> trabajador${freeTotal>1?"es":""} libre${freeTotal>1?"s":""}</div>`:`<div class="occhead">✓ Todo al máximo: no queda ningún trabajador libre</div>`}<div class="occs">${cells}</div></div>`;
+}
+function renderAll(now){
+  const accs=accounts();
+  if(!accs.length) return onboarding();
+  const sect=vil=>{
+    const all=[]; accs.forEach(a=>(a.ups||[]).filter(u=>vilOf(u.id)===vil).forEach(u=>all.push([a,u]))); all.sort((x,y)=>x[1].end-y[1].end);
+    return `<div class="panel ${vil==="bb"?"night":""}">
+      <div class="panel-head"><div class="vil-title"><h2>${esc(VIL[vil].name)}</h2><span class="pill ${vil}">${all.length} en curso</span></div></div>
+      ${occupancyHtml(accs,vil,now)}
+      ${upsTabsHtml("all:"+vil, vil, all, now, accs.length>1, accs.length===1?accs[0]:null)}
+    </div>`;
+  };
+  const card=a=>{
+    const line=vil=>VIL[vil].workers.filter(w=>(a.cap||{})[w]).map(w=>{ const nf=nextFree(a,w,now); return `${esc(WORKER_SHORT[w])}: <b class="${nf.free?"ok":""}">${nf.free?(nf.free>1?nf.free+" libres":"libre"):esc(fmtWhen(nf.at))}</b>`; }).join(" · ");
+    return `<button class="acc-card" style="--ac:${accColor(a)}" data-act="view" data-v="${esc(a._id)}">${img("big_"+ID_TH, a.th||1)}<div><div style="font-family:var(--display);font-size:18px">${esc(a.name)}</div>
+      <div class="ln">${line("h")}</div>${a.bh?`<div class="ln">${line("bb")}</div>`:""}</div></button>`;
+  };
+  return `
+  <div class="panel"><div class="panel-head"><h2>Tus cuentas</h2><span class="muted small">Próximo trabajador libre</span></div><div class="accs">${accs.map(card).join("")}</div></div>
+  ${sect("h")}
+  ${sect("bb")}
+  ${settingsPanel()}`;
+}
+function accSettings(acc){
+  const cap=(S.docs[acc._id]||acc).cap||{}, gp=acc.gp||{}, a=esc(acc._id);
+  return `<details class="panel" ${Object.keys(acc.inv||{}).length?"":"open"}>
+    <summary>Ajustes de ${esc(acc.name)} e importar JSON</summary>
+    <label for="imp-${a}">Pega aquí el JSON exportado del juego<textarea id="imp-${a}" placeholder='{"tag":"#…","timestamp":…,"buildings":[…]}'></textarea></label>
+    <div class="small muted">En el juego: Ajustes → Más ajustes → Exportar datos de la aldea. Al reimportar se actualizan niveles, temporizadores y ayudantes de las dos aldeas; los avisos ya programados se conservan.</div>
+    <div><button class="btn primary" data-act="import" data-acc="${a}">Importar JSON</button></div>
+    <div class="row"><label for="name-${a}">Nombre de la cuenta<input id="name-${a}" value="${esc(acc.name)}"></label></div>
+    <div class="row">
+      <label for="capb-${a}">Constructores (aldea)<input id="capb-${a}" type="number" min="1" max="7" value="${cap.b||5}"></label>
+      <label for="capbb-${a}">Constructores (base nocturna)<input id="capbb-${a}" type="number" min="0" max="2" value="${cap.bb??1}"></label>
+    </div>
+    
+    <div class="actions"><button class="btn" data-act="saveacc" data-acc="${a}">Guardar ajustes</button><button class="btn danger" data-act="delacc" data-acc="${a}">Eliminar cuenta</button></div>
+  </details>`;
+}
+function backupPanel(){
+  return `<details class="panel"><summary>Copia de seguridad</summary>
+    <div class="small">${NATIVE?"Para traer tus cuentas desde la versión web: allí pulsa <b>Copiar mis datos</b>, y aquí pégalo y pulsa <b>Restaurar</b>.":"Para pasar tus cuentas a la app del móvil: pulsa <b>Copiar mis datos</b> y pégalo en la app, en Copia de seguridad → Restaurar."}</div>
+    <div class="actions"><button class="btn" data-act="bkcopy">Copiar mis datos</button></div>
+    <label for="bk-in">Pegar una copia<textarea id="bk-in" placeholder='{"clashAlerter":1,...}'></textarea></label>
+    <div><button class="btn" data-act="bkrestore">Restaurar</button></div>
+  </details>`;
+}
+function nativeNotifHtml(){
+  if(!NATIVE) return "";
+  const ok=NOTIF.perm==="granted";
+  return `<div class="banner ${ok?"okb":""}">${ok?`Avisos activados en este móvil${S.notifCount!=null?` · ${S.notifCount} programados`:""}.`:"Los avisos están desactivados. Actívalos para que te llegue cada mejora."}</div>
+    ${NOTIF.exact===false?`<div class="small">Para que lleguen a la hora exacta, Android pide permiso de "alarmas y recordatorios".</div>`:""}
+    <div class="actions">${ok?"":`<button class="btn primary" data-act="nperm">Activar avisos</button>`}${NOTIF.exact===false?`<button class="btn" data-act="nexact">Permitir hora exacta</button>`:""}<button class="btn" data-act="ntest">Enviar aviso de prueba</button></div>`;
+}
+function settingsPanel(){
+  const st=settings(), idleOn=st.idleOn!==false;
+  if(NATIVE) return `<details class="panel" open>
+    <summary>Avisos</summary>
+    ${nativeNotifHtml()}
+    <label class="check" for="idleon"><input id="idleon" type="checkbox" ${idleOn?"checked":""}> Avisarme si un trabajador sigue libre</label>
+    <div class="row">
+      <label for="idleh">Horas libre antes de avisar<input id="idleh" type="number" min="1" max="24" value="${esc(st.idleH||2)}"></label>
+      <label for="slfrom">Me acuesto a las<input id="slfrom" type="number" min="0" max="23" value="${esc(st.sleep?st.sleep.from:0)}"></label>
+      <label for="slto">Me levanto a las<input id="slto" type="number" min="0" max="23" value="${esc(st.sleep?st.sleep.to:8)}"></label>
+    </div>
+    <div class="actions"><button class="btn" data-act="savetopic">Guardar ajustes</button></div>
+  </details>${backupPanel()}`;
+  return backupPanel()+`<details class="panel">
+    <summary>Avisos en el móvil (Claude)</summary>
+    <div class="small">Los avisos te llegan como <b>notificación de la app de Claude</b>. Una tarea programada revisa tus mejoras cada 2 horas y deja preparado un aviso a la hora exacta en que termina cada una. No tienes que pulsar nada: basta con apuntar las mejoras aquí o reimportar el JSON.</div>
+    <div class="small muted">Para recibirlos, activa las notificaciones de la app de Claude en el móvil. Una mejora que dure menos de 2 horas puede quedarse sin aviso si empieza y acaba entre dos revisiones.</div>
+    <label class="check" for="idleon"><input id="idleon" type="checkbox" ${idleOn?"checked":""}> Avisarme si un trabajador sigue libre</label>
+    <div class="row">
+      <label for="idleh">Horas libre antes de avisar<input id="idleh" type="number" min="1" max="24" value="${esc(st.idleH||2)}"></label>
+      <label for="slfrom">Me acuesto a las<input id="slfrom" type="number" min="0" max="23" value="${esc(st.sleep?st.sleep.from:0)}"></label>
+      <label for="slto">Me levanto a las<input id="slto" type="number" min="0" max="23" value="${esc(st.sleep?st.sleep.to:8)}"></label>
+    </div>
+    <div class="small muted">El horario de sueño lo usa el plan para no proponerte empezar mejoras mientras duermes. Pon la misma hora en los dos campos para desactivarlo.</div>
+    <div class="actions"><button class="btn" data-act="savetopic">Guardar ajustes</button></div>
+  </details>`;
+}
+function onboarding(){
+  return `<div class="panel">
+    <h2>Añadir una cuenta</h2>
+    <ol class="steps">
+      <li>En Clash of Clans: Ajustes → Más ajustes → <b>Exportar datos de la aldea</b>. Se copia un JSON con las dos aldeas.</li>
+      <li>Ponle nombre a la cuenta y pega el JSON aquí abajo.</li>
+      <li>Los avisos te llegarán como notificación de la app de Claude.</li>
+    </ol>
+    <label for="new-name">Nombre de la cuenta<input id="new-name" placeholder="Principal"></label>
+    <label for="new-json">JSON exportado<textarea id="new-json"></textarea></label>
+    <div><button class="btn primary big" data-act="addacc">Añadir cuenta</button></div>
+  </div>
+  ${accounts().length?"":settingsPanel()}`;
+}
+function render(){
+  const app=document.getElementById("app");
+  const theme=(S.view!=="all"&&S.view!=="new"&&S.vil==="bb")?"night":"wood";
+  if(document.body.className!==theme) document.body.className=theme;
+  if(!S.ready) return;
+  const now=Date.now(), accs=accounts();
+  if(S.view!=="all" && S.view!=="new" && !curAcc()) S.view="all";
+  const focus=document.activeElement && document.activeElement.id; const sel=focus&&document.activeElement.selectionStart;
+  const openDetails=[...document.querySelectorAll("details[open] summary")].map(s=>s.textContent);
+  app.innerHTML=`
+  <div class="top"><div><h1>Clash Alerter</h1><div class="sub">${S.mode==="db"?"Sincronizado entre tus dispositivos":"Guardado en este navegador"}</div></div></div>
+  ${S.note?`<div class="banner">${esc(S.note)}</div>`:""}
+  ${accs.length?`<div class="tabs" role="toolbar" aria-label="Cuentas">
+    <button class="tab plain" aria-pressed="${S.view==="all"}" data-act="view" data-v="all">Resumen</button>
+    ${accs.map(a=>`<button class="tab acc" style="--ac:${accColor(a)}" aria-pressed="${S.view===a._id}" data-act="view" data-v="${esc(a._id)}">${img("big_"+ID_TH,a.th||1)}${esc(a.name)}</button>`).join("")}
+    <button class="tab plain" aria-pressed="${S.view==="new"}" data-act="view" data-v="new">+ Cuenta</button>
+  </div>`:""}
+  ${S.view==="new"?onboarding():S.view==="all"?renderAll(now):renderAcc(curAcc(),now)}`;
+  document.querySelectorAll("details summary").forEach(s=>{ if(openDetails.includes(s.textContent)) s.parentElement.open=true; });
+  if(focus){ const el=document.getElementById(focus); if(el){ el.focus(); try{ if(sel!=null) el.setSelectionRange(sel,sel); }catch(e){} } }
+}
+
+/* ---------- modales ---------- */
+let modalTick=null;
+function closeModal(){ document.getElementById("modal-root").innerHTML=""; clearInterval(modalTick); modalTick=null; }
+function durInputs(ms){
+  let s=Math.round(ms/1000); const d=Math.floor(s/86400); s-=d*86400; const h=Math.floor(s/3600); s-=h*3600; const m=Math.round(s/60);
+  return `<div class="dur">
+    <label for="dd">Días<input id="dd" type="number" min="0" value="${d}"></label>
+    <label for="dh">Horas<input id="dh" type="number" min="0" max="23" value="${h}"></label>
+    <label for="dm">Minutos<input id="dm" type="number" min="0" max="59" value="${m}"></label></div>`;
+}
+function readDur(){ const v=id=>Math.max(0,parseInt(document.getElementById(id).value||"0",10)||0); return ((v("dd")*24+v("dh"))*60+v("dm"))*60000; }
+function openUpModal({id, lvl, title, sub, durMs, worker, onConfirm, confirmLabel, extra=""}){
+  const root=document.getElementById("modal-root");
+  const cls = isLab(worker)?"l":(worker==="bb"?"bb":"");
+  root.innerHTML=`<div class="modal-back" data-act="close-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+    <div class="mhead"><div class="tile">${img(id,lvl)}</div><div><h2 id="m-title">${esc(title)}</h2><div class="muted small">${sub}</div></div></div>
+    ${durInputs(durMs)}
+    <div class="endline">Termina <b id="m-end"></b></div>
+    ${extra}
+    <div class="actions"><button class="btn primary big ${cls}" id="m-go">${esc(confirmLabel)}</button><button class="btn big" data-act="close">Cerrar</button></div>
+  </div></div>`;
+  const go=document.getElementById("m-go");
+  const refresh=()=>{ const d=readDur(); document.getElementById("m-end").textContent=d?fmtWhen(Date.now()+d):"—"; };
+  refresh(); modalTick=setInterval(refresh,1000);
+  root.querySelectorAll("input").forEach(i=>i.addEventListener("input",refresh));
+  go.addEventListener("click",ev=>{
+    const d=readDur(); if(!d){ toast("Pon una duración mayor que cero."); return; }
+    onConfirm(d); closeModal();
+  });
+  setTimeout(()=>{ const f=document.getElementById("dd"); f&&f.focus(); },30);
+}
+function findUp(accId,u){ const acc=accounts().find(a=>a._id===accId); return acc?[acc,(acc.ups||[]).find(x=>x.u===u)]:[null,null]; }
+
+if(typeof document!=="undefined" && document.addEventListener){
+setInterval(()=>{
+  const now=Date.now(); let finished=false;
+  document.querySelectorAll("[data-end]").forEach(el=>{ const left=+el.dataset.end-now; el.textContent=left<=0&&el.dataset.plain?"Disponible":fmtCountdown(left); if(left<=0&&!el.dataset.plain){ if(!el.classList.contains("done")) finished=true; el.classList.add("done"); } });
+  if(finished && S.ready) checkDone();
+},1000);
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden && S.ready){ checkDone(); render(); } });
+document.addEventListener("click",ev=>{
+  const el=ev.target.closest("[data-act]"); if(!el) return;
+  const act=el.dataset.act;
+  if(act==="close-bg"){ if(ev.target===el) closeModal(); return; }
+  if(act==="close"){ closeModal(); return; }
+  if(act==="view"){ S.view=el.dataset.v; S.catQ=""; S.catG=""; S.catNew=false; render(); window.scrollTo(0,0); return; }
+  if(act==="uptab"){ S.upTab[el.dataset.k]=el.dataset.w; render(); return; }
+  if(act==="catg"){ S.catG=el.dataset.g; S.catQ=""; render(); return; }
+  if(act==="vil"){ S.vil=el.dataset.v; S.catQ=""; S.catG=""; S.catNew=false; render(); return; }
+  if(act==="padd"){
+    const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
+    const id=+el.dataset.id, from=planFrom(acc,id,+el.dataset.from,+el.dataset.cnt||1);
+    if(from>=CAT[id].d.length||!canUpgrade(id,from)){ toast("Ya está todo planificado hasta el máximo."); return; }
+    saveAcc({...acc, plan:[...(acc.plan||[]), {k:rid(), id, from}]}); toast(CAT[id].n+" añadido al plan"); return;
+  }
+  if(act==="pmove"||act==="pdel"||act==="pclear"){
+    const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
+    const plan=[...(acc.plan||[])];
+    if(act==="pclear"){
+      const keep=plan.filter(p=>vilOf(p.id)!==S.vil);
+      if(el.dataset.confirm!=="1"){ el.dataset.confirm="1"; el.textContent="Pulsa otra vez para vaciar"; return; }
+      saveAcc({...acc, plan:keep}); return;
+    }
+    const i=+el.dataset.i;
+    if(act==="pdel"){ plan.splice(i,1); saveAcc({...acc, plan}); return; }
+    // mover dentro de la misma aldea
+    const d=+el.dataset.d; let j=i+d;
+    while(j>=0&&j<plan.length&&vilOf(plan[j].id)!==vilOf(plan[i].id)) j+=d;
+    if(j<0||j>=plan.length) return;
+    [plan[i],plan[j]]=[plan[j],plan[i]]; saveAcc({...acc, plan}); return;
+  }
+  if(act==="start"){
+    const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
+    const id=+el.dataset.id, from=+el.dataset.from, c=CAT[id];
+    const b=busy(acc,Date.now()), cap=(acc.cap||{})[c.w]||1;
+    const full=(b[c.w]||0)>=cap, canGob=GOBLIN[c.w]&&vilOf(id)==="h", gobBusy=canGob&&goblinUp(acc,c.w,Date.now());
+    let warn="";
+    if(canGob) warn=`<label class="check gobpick" for="m-gob"><input id="m-gob" type="checkbox" ${full&&!gobBusy?"checked":""} ${gobBusy?"disabled":""}> ${img("goblin_builder",0,"bi")} Usar ${esc(GOBLIN[c.w].toLowerCase())} (pagando gemas)${gobBusy?" · ocupado":""}</label>`;
+    if(full && !(canGob&&!gobBusy)) warn+=`<div class="banner">${esc(WORKER[c.w])}: no te quedan libres según la app. Revisa si alguna mejora ya no está en marcha.</div>`;
+    const cost=catCost(id,from);
+    openUpModal({id, lvl:from+1, title:c.n, sub:esc((from?stepTxt(id,from):"Construcción nueva")+" · "+WORKER_SHORT[c.w])+(cost?` · <span class="cost">${resIcon(c.res)}${fmtNum(cost)}</span>`:"")+"<br>Ajusta la duración si en el juego sale otra.", durMs:effDur(acc,id,from),
+      worker:c.w, confirmLabel:"Empezar mejora", extra:warn,
+      onConfirm:(d)=>{
+        const g=document.getElementById("m-gob"); const useGob=!!(g&&g.checked&&!g.disabled);
+        const r=startUpgrade(acc,id,from,d,Date.now(),undefined,useGob);
+        saveAcc(r.acc); if(r.up.boosted) toast(BOOSTS[r.up.boosted[0]].name+" activo: la mejora acabará antes."); else toast(useGob?"Mejora empezada con el "+GOBLIN[c.w].toLowerCase()+".":"Mejora empezada. Claude te avisará cuando termine.");
+      }});
+    return;
+  }
+  if(act==="adjust"){
+    const [acc,up]=findUp(el.dataset.acc, el.dataset.u); if(!acc||!up) return;
+    openUpModal({id:up.id, lvl:up.to, title:"Ajustar "+CAT[up.id].n, sub:"Pon el tiempo que queda según el juego, por ejemplo tras usar una poción o el aprendiz.", durMs:Math.max(0,up.end-Date.now()),
+      worker:up.w, confirmLabel:"Guardar",
+      onConfirm:(d)=>{
+        const nu={...up, n:up.n||CAT[up.id].n, end:Date.now()+d};
+        saveAcc({...acc, ups:acc.ups.map(x=>x.u===up.u?nu:x)}); toast("Tiempo actualizado. El aviso se reprograma en la próxima revisión.");
+      }});
+    return;
+  }
+  if(act==="cancel"){
+    const [acc,up]=findUp(el.dataset.acc, el.dataset.u); if(!acc||!up) return;
+    const del=null;
+    document.getElementById("modal-root").innerHTML=`<div class="modal-back" data-act="close-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="c-title">
+      <div class="mhead"><div class="tile">${img(up.id,up.to)}</div><h2 id="c-title">Cancelar ${esc(CAT[up.id].n)}</h2></div>
+      <div>Se quita de la lista y vuelve al nivel ${up.from}.${del?" También se borra el aviso programado en ntfy (se abre una pestaña).":""}</div>
+      <div class="actions">${del?`<a class="btn danger big" href="${esc(del)}" target="_blank" rel="noopener" data-act="docancel" data-acc="${esc(acc._id)}" data-u="${esc(up.u)}">Cancelar y borrar aviso</a>`:`<button class="btn danger big" data-act="docancel" data-acc="${esc(acc._id)}" data-u="${esc(up.u)}">Cancelar mejora</button>`}<button class="btn big" data-act="close">Volver</button></div>
+    </div></div>`;
+    return;
+  }
+  if(act==="boost"){
+    const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
+    const k=el.dataset.k, B=BOOSTS[k], now=Date.now();
+    const ups=(acc.ups||[]).filter(u=>u.end>now&&B.ws.includes(u.w)).sort((a,b)=>a.end-b.end);
+    const hl=B.helper?(((acc.helpers||{})[B.helper]||{}).lvl||1):0;
+    document.getElementById("modal-root").innerHTML=`<div class="modal-back" data-act="close-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="b-title">
+      <div class="mhead"><div class="tile">${img(B.icon,0)}</div><div><h2 id="b-title">${esc(B.name)}</h2><div class="muted small">${esc(B.desc)}</div></div></div>
+      ${B.one?`<label for="b-target">Mejora<select id="b-target">${ups.map(u=>`<option value="${esc(u.u)}">${esc(CAT[u.id].n)} ${u.from}→${u.to} · quedan ${fmtDur(u.end-now)}</option>`).join("")}</select></label>
+        <label for="b-lvl">Nivel del ${B.helper===93000000?"aprendiz":"ayudante"} (ahorra tantas horas como su nivel)<select id="b-lvl">${[1,2,3,4,5,6,7,8].map(l=>`<option value="${l}" ${l===hl?"selected":""}>Nivel ${l}</option>`).join("")}</select></label>`:""}
+      ${B.clock?`<label for="b-min">Minutos de impulso que quedan (si ya lo activaste hace un rato en el juego, pon los que le quedan)<input id="b-min" type="number" min="1" max="120" value="${clockMinutes(acc)}"></label>`:""}
+      <div id="b-prev" class="list"></div>
+      <div class="actions"><button class="btn primary big ${B.ws[0]==="l"||B.ws[0]==="p"?"l":(B.ws[0]==="bb"?"bb":"")}" data-act="doboost" data-k="${k}" data-acc="${esc(acc._id)}">Aplicar</button><button class="btn big" data-act="close">Cerrar</button></div>
+    </div></div>`;
+    const prev=()=>{
+      const opts={target:(document.getElementById("b-target")||{}).value, lvl:+((document.getElementById("b-lvl")||{}).value||0)||undefined, min:+((document.getElementById("b-min")||{}).value||0)||undefined};
+      const r=applyBoost(acc,k,Date.now(),opts);
+      document.getElementById("b-prev").innerHTML=r.changed.length?r.changed.map(c=>{ const u=acc.ups.find(x=>x.u===c.u); return `<div class="bprev"><div class="tile sm">${img(u.id,u.to)}</div><div><b>${esc(CAT[u.id].n)}</b><div class="small muted">${fmtDur(c.before)} → <b>${fmtDur(c.after)}</b> (−${fmtDur(c.before-c.after)})</div></div></div>`; }).join(""):`<div class="empty">No hay mejoras en curso a las que aplicarlo.</div>`;
+    };
+    prev(); document.querySelectorAll("#modal-root select,#modal-root input").forEach(i=>i.addEventListener("input",prev));
+    return;
+  }
+  if(act==="doboost"){
+    const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
+    const k=el.dataset.k;
+    const opts={target:(document.getElementById("b-target")||{}).value, lvl:+((document.getElementById("b-lvl")||{}).value||0)||undefined, min:+((document.getElementById("b-min")||{}).value||0)||undefined};
+    const r=applyBoost(acc,k,Date.now(),opts);
+    if(!r.changed.length){ closeModal(); return; }
+    saveAcc(r.acc); closeModal();
+    toast(BOOSTS[k].name+" aplicado a "+r.changed.length+" mejora"+(r.changed.length>1?"s":"")+". Los avisos se reprogramarán en la próxima revisión.");
+    return;
+  }
+  if(act==="equp"){
+    const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
+    const id=el.dataset.id; const eq={...(acc.eq||{})}; eq[id]=(eq[id]||1)+1;
+    saveAcc({...acc, eq}); toast(EQ[id].n+" a nivel "+eq[id]); return;
+  }
+  if(act==="wallup"){
+    const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
+    const id=+el.dataset.id, l=+el.dataset.l, have=((acc.inv||{})[String(id)]||{})[String(l)]||0;
+    const n=Math.max(1,Math.min(have, parseInt((document.getElementById("wn-"+l+"-"+acc._id)||{}).value,10)||1));
+    const inv=JSON.parse(JSON.stringify(acc.inv||{})); addInv(inv,id,l,-n); addInv(inv,id,l+1,n);
+    saveAcc({...acc, inv}); toast(n+" muro"+(n>1?"s":"")+" a nivel "+(l+1)); return;
+  }
+  if(act==="nperm"){ (async()=>{ try{ const p=await P.LocalNotifications.requestPermissions(); NOTIF.perm=p.display; }catch(e){} render(); syncNotifications(); })(); return; }
+  if(act==="nexact"){ (async()=>{ try{ await P.LocalNotifications.changeExactNotificationSetting(); const x=await P.LocalNotifications.checkExactNotificationSetting(); NOTIF.exact=x.exact_alarm; }catch(e){} render(); })(); return; }
+  if(act==="ntest"){ testNotification(); return; }
+  if(act==="bkcopy"){
+    const txt=backupJson();
+    (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>toast("Datos copiados. Pégalos en la otra versión.")).catch(()=>{ const ta=document.getElementById("bk-in"); ta.value=txt; ta.select(); toast("Cópialo tú del cuadro de texto."); });
+    return;
+  }
+  if(act==="bkrestore"){
+    const raw=(document.getElementById("bk-in").value||"").trim(); if(!raw){ toast("Pega primero la copia."); return; }
+    try{ restoreBackup(raw); S.view="all"; toast("Datos restaurados"); }catch(e){ toast(e.message.startsWith("No es")?e.message:"La copia no es válida."); }
+    return;
+  }
+  if(act==="finish"){
+    const [acc,up]=findUp(el.dataset.acc, el.dataset.u); if(!acc||!up) return;
+    const opts=finishOptions(up), left=Math.max(0,up.end-Date.now());
+    document.getElementById("modal-root").innerHTML=`<div class="modal-back" data-act="close-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="f-title">
+      <div class="mhead"><div class="tile">${img(up.id,up.to)}</div><div><h2 id="f-title">Terminar ${esc(CAT[up.id].n)}</h2><div class="muted small">Nivel ${up.from} → ${up.to} · quedaban ${fmtDur(left)}</div></div></div>
+      <div class="small">¿Cómo la has terminado?</div>
+      <div class="fopts">${opts.map(k=>`<button class="fopt" data-act="dofinish" data-m="${k}" data-acc="${esc(acc._id)}" data-u="${esc(up.u)}">${img(FINISH[k][1],0)}<span>${esc(FINISH[k][0])}</span></button>`).join("")}</div>
+      ${vilOf(up.id)==="bb"?`<div class="small muted">En la base del constructor los libros no sirven, solo gemas.</div>`:""}
+      <div class="actions"><button class="btn big" data-act="close">Volver</button></div>
+    </div></div>`;
+    return;
+  }
+  if(act==="dofinish"){
+    const [acc,up]=findUp(el.dataset.acc, el.dataset.u); if(!acc||!up) return;
+    const al=((S.docs.alerts||{}).items||{})[up.u+":end"];
+    saveAcc(finishUpgrade(acc, up.u, el.dataset.m, Date.now())); closeModal();
+    toast(CAT[up.id].n+" terminada con "+FINISH[el.dataset.m][0].toLowerCase()+(al?". El aviso que tenía programado puede llegarte igualmente.":""));
+    return;
+  }
+  if(act==="docancel"){
+    const [acc]=findUp(el.dataset.acc, el.dataset.u); if(!acc) return;
+    saveAcc(cancelUpgrade(acc, el.dataset.u)); closeModal(); toast("Mejora cancelada"); return;
+  }
+  if(act==="addacc"){
+    const name=(document.getElementById("new-name").value||"").trim()||("Cuenta "+(accounts().length+1));
+    const raw=document.getElementById("new-json").value.trim();
+    let parsed=null;
+    if(raw){ try{ parsed=parseExport(JSON.parse(raw)); }catch(e){ toast(e.message.startsWith("No parece")?e.message:"El JSON no es válido. Cópialo de nuevo desde el juego."); return; } }
+    const same=parsed&&parsed.tag&&accounts().find(a=>a.tag===parsed.tag);
+    if(same){ saveAcc(mergeImport(same, parsed)); S.view=same._id; toast("Esa cuenta ya existía: la he actualizado"); return; }
+    let acc={name, order:Date.now(), inv:{}, ups:[], done:[], cap:{b:5,l:1,p:1,bb:1,bl:1}, gp:{b:0,l:0}, th:0, bh:0, tag:""};
+    if(parsed) acc=mergeImport(acc, parsed);
+    const id="acc_"+rid(); S.view=id; S.vil="h"; save(id, acc); syncIndex(); checkDone(); return;
+  }
+  if(act==="import"){
+    const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
+    const raw=document.getElementById("imp-"+acc._id).value.trim(); if(!raw){ toast("Pega primero el JSON."); return; }
+    try{ const m=mergeImport(acc, parseExport(JSON.parse(raw))); saveAcc(m); toast("Cuenta actualizada: "+m.ups.length+" mejoras en curso"); setTimeout(checkDone,50); }
+    catch(e){ toast(e.message.startsWith("No parece")?e.message:"El JSON no es válido. Cópialo de nuevo desde el juego."); }
+    return;
+  }
+  if(act==="saveacc"){
+    const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
+    const v=id=>document.getElementById(id+"-"+acc._id).value;
+    const n={...acc, name:(v("name").trim()||acc.name), cap:{...acc.cap, b:Math.max(1,+v("capb")||1), bb:Math.max(0,+v("capbb")||0)}, capManual:true};
+    saveAcc(n); toast("Ajustes guardados"); return;
+  }
+  if(act==="delacc"){
+    const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
+    if(el.dataset.confirm!=="1"){ el.dataset.confirm="1"; el.textContent="Pulsa otra vez para eliminar"; return; }
+    S.view="all"; save(acc._id, null); syncIndex(); toast("Cuenta eliminada"); return;
+  }
+  if(act==="savetopic"){
+    const num=(id,d)=>{ const v=parseInt(document.getElementById(id).value,10); return isNaN(v)?d:v; };
+    const sleep={from:Math.min(23,Math.max(0,num("slfrom",0))), to:Math.min(23,Math.max(0,num("slto",8)))};
+    save("settings", {...settings(), idleOn:document.getElementById("idleon").checked, idleH:Math.min(24,Math.max(1,num("idleh",2))), sleep}); toast("Ajustes de avisos guardados"); return;
+  }
+});
+document.addEventListener("input",ev=>{ if(ev.target.id==="cat-q"){ S.catQ=ev.target.value; render(); } });
+document.addEventListener("change",ev=>{
+  const t=ev.target;
+  if(t.dataset && t.dataset.boost){
+    const acc=accounts().find(a=>a._id===t.dataset.acc); if(!acc) return;
+    saveAcc({...acc, gp:{...(acc.gp||{}), [t.dataset.boost]:+t.value}});
+    toast("Tiempos recalculados con "+(+t.value)+" % menos de "+(t.dataset.boost==="b"?"construcción":"investigación")); return;
+  }
+  if(t.id==="cat-new"){ S.catNew=t.checked; S.catG=""; render(); }
+  if(t.id==="cat-all"){ S.catAll=t.checked; render(); }
+});
+document.addEventListener("keydown",ev=>{ if(ev.key==="Escape") closeModal(); });
+}
+if(typeof module!=="undefined"){ module.exports={parseExport,mergeImport,applyDone,startUpgrade,cancelUpgrade,ntfyLink,catDur,effDur,CAT,busy,goblinUp,stepTxt,eqMax,maxAt,applyBoost,boostedLeft,finishUpgrade,finishOptions,progress,nextFree,maxAt,simulatePlan,sleepAdjust,planFrom,takeIdle,idleLink}; }
+else {
+  fetch("images.json").then(r=>r.ok?r.json():null).then(j=>{ if(j){ IMG=j; render(); } }).catch(()=>{});
+  initStore();
+}
+</script>
+</body>
+</html>
