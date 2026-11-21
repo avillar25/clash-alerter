@@ -756,6 +756,7 @@ function plannedNotifications(now){
   const EMO={b:"⚒️",bb:"⚒️",l:"🧪",bl:"🧪",p:"🐾"};
   const FREE={b:"Constructor libre",bb:"Constructor de la base libre",l:"Laboratorio libre",bl:"Laboratorio estelar libre",p:"Casa de mascotas libre"};
   for(const a of accounts()){
+    if(a.clock && a.clock>now+5000) list.push({id:nid(a._id+":clock"), title:`⏰ ${a.name}: torre del reloj lista`, body:"Ya puedes volver a activar la torre del reloj en la base del constructor.", at:a.clock});
     for(const u of a.ups||[]){
       if(u.end<=now+5000) continue;
       const n=(CAT[u.id]||{}).n||u.n||"Mejora";
@@ -825,11 +826,11 @@ function helpersHtml(acc, vil, now){
     const ready=h.end<=now;
     out.push(`<div class="hp ${ready?"ready":""}">${img("h_"+id,0)}<div><b>${esc(HELPERS[id])}</b>${ready?"Disponible":`<span class="num" data-end="${h.end}" data-plain="1">${fmtCountdown(h.end-now)}</span>`}</div></div>`);
   }
-  if(vil==="bb" && acc.clock){
+  if(vil==="bb" && (acc.clock || maxLvl(acc.inv||{},1000039))){
     const ready=acc.clock<=now;
     out.push(`<div class="hp ${ready?"ready":""}">${img("clock",0)}<div><b>Torre del reloj</b>${ready?"Disponible":`<span class="num" data-end="${acc.clock}" data-plain="1">${fmtCountdown(acc.clock-now)}</span>`}</div></div>`);
   }
-  return out.length?`<div><div class="acc-label" style="margin-bottom:6px">Ayudantes · según la última importación</div><div class="helpers">${out.join("")}</div></div>`:"";
+  return out.length?`<div><div class="acc-label" style="margin-bottom:6px">${vil==="bb"?"Torre del reloj":"Ayudantes · según la última importación"}</div><div class="helpers">${out.join("")}</div></div>`:"";
 }
 function upRow(acc, up, now, showAcc){
   const c=CAT[up.id]||{n:"Desconocido"};
@@ -1373,7 +1374,8 @@ document.addEventListener("click",ev=>{
       <div class="mhead"><div class="tile">${img(B.icon,0)}</div><div><h2 id="b-title">${esc(B.name)}</h2><div class="muted small">${esc(B.desc)}</div></div></div>
       ${B.one?`<label for="b-target">Mejora<select id="b-target">${ups.map(u=>`<option value="${esc(u.u)}">${esc(CAT[u.id].n)} ${u.from}→${u.to} · quedan ${fmtDur(u.end-now)}</option>`).join("")}</select></label>
         <label for="b-lvl">Nivel del ${B.helper===93000000?"aprendiz":"ayudante"} (ahorra tantas horas como su nivel)<select id="b-lvl">${[1,2,3,4,5,6,7,8].map(l=>`<option value="${l}" ${l===hl?"selected":""}>Nivel ${l}</option>`).join("")}</select></label>`:""}
-      ${B.clock?`<label for="b-min">Minutos de impulso que quedan (si ya lo activaste hace un rato en el juego, pon los que le quedan)<input id="b-min" type="number" min="1" max="120" value="${clockMinutes(acc)}"></label>`:""}
+      ${B.clock?`<label for="b-min">Minutos de impulso que quedan (si ya lo activaste hace un rato en el juego, pon los que le quedan)<input id="b-min" type="number" min="1" max="120" value="${clockMinutes(acc)}"></label>
+        <label for="b-cd">Se puede volver a usar dentro de (horas)<input id="b-cd" type="number" min="0.5" max="48" step="0.5" value="${acc.clockCdH||7}"></label>`:""}
       <div id="b-prev" class="list"></div>
       <div class="actions"><button class="btn primary big ${B.ws[0]==="l"||B.ws[0]==="p"?"l":(B.ws[0]==="bb"?"bb":"")}" data-act="doboost" data-k="${k}" data-acc="${esc(acc._id)}">Aplicar</button><button class="btn big" data-act="close">Cerrar</button></div>
     </div></div>`;
@@ -1389,10 +1391,14 @@ document.addEventListener("click",ev=>{
     const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
     const k=el.dataset.k;
     const opts={target:(document.getElementById("b-target")||{}).value, lvl:+((document.getElementById("b-lvl")||{}).value||0)||undefined, min:+((document.getElementById("b-min")||{}).value||0)||undefined};
-    const r=applyBoost(acc,k,Date.now(),opts);
-    if(!r.changed.length){ closeModal(); return; }
+    const now=Date.now(); const r=applyBoost(acc,k,now,opts);
+    if(k==="clock"){
+      // la torre se recarga: cuenta atrás hasta poder usarla otra vez (y aviso en la app del móvil)
+      const cd=Math.max(0.5,+((document.getElementById("b-cd")||{}).value||7)||7);
+      r.acc.clock=now+cd*3600000; r.acc.clockCdH=cd;
+    } else if(!r.changed.length){ closeModal(); return; }
     saveAcc(r.acc); closeModal();
-    toast(BOOSTS[k].name+" aplicado a "+r.changed.length+" mejora"+(r.changed.length>1?"s":"")+". Los avisos se reprogramarán en la próxima revisión.");
+    toast(BOOSTS[k].name+" aplicado a "+r.changed.length+" mejora"+(r.changed.length===1?"":"s")+(k==="clock"?". Podrás volver a usarla "+fmtWhen(r.acc.clock)+".":"."));
     return;
   }
   if(act==="equp"){
