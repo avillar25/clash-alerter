@@ -241,6 +241,7 @@ details.loot summary{font-family:var(--btn-font,var(--body));font-size:15px}
 .btn.ham{padding:5px 7px}
 .mrow{display:grid;grid-template-columns:46px 1fr auto;gap:10px;align-items:center;padding:8px;border-radius:12px;background:var(--raise);border:1px solid var(--line)}
 .mrow .nm{font-weight:900} .mrow .sub{font-size:12px;color:var(--muted)}
+.panel.upd{border-color:var(--ok)!important;background:var(--ok-soft)}
 .ctabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
 .ctab{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:74px;border:1px solid var(--line);background:var(--raise);color:var(--ink);border-radius:12px;padding:6px 8px;cursor:pointer;font:800 12px var(--body)}
 .ctab img,.ctab .ph{width:34px;height:34px;object-fit:contain}
@@ -360,6 +361,9 @@ const isLab = w => w==="l"||w==="bl"||w==="p";
 /* App nativa (Capacitor en Android): datos en el móvil y avisos con notificaciones locales */
 const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 const P = NATIVE ? (window.Capacitor.Plugins||{}) : {};
+/* Versión de la app y repositorio de GitHub de donde salen las actualizaciones (los rellena la compilación) */
+const APP_VERSION = "__APP_VERSION__";
+const UPDATE_REPO = "__UPDATE_REPO__";
 
 /* ---------- imágenes (se cargan aparte para que la página abra rápido) ---------- */
 let IMG=null;
@@ -738,9 +742,9 @@ async function initStore(){
   if(NATIVE){
     S.mode="native";
     try{ const r=await P.Preferences.get({key:"coc-avisos"}); S.docs=r&&r.value?JSON.parse(r.value):localLoad(); }catch(e){ S.docs=localLoad(); }
-    S.ready=true; checkDone(); render(); initNotifications();
+    S.ready=true; checkDone(); render(); initNotifications(); checkUpdate(false);
     if(P.App){
-      P.App.addListener("appStateChange", st=>{ if(st.isActive){ checkDone(); render(); syncNotifications(); } });
+      P.App.addListener("appStateChange", st=>{ if(st.isActive){ checkDone(); render(); syncNotifications(); checkUpdate(false); } });
       P.App.addListener("backButton", ()=>{ if(document.querySelector("#modal-root .modal")) closeModal(); else if(S.view!=="all"){ S.view="all"; render(); } else P.App.exitApp(); });
     }
     return;
@@ -824,6 +828,31 @@ function backupJson(){ const d={}; for(const [k,v] of Object.entries(S.docs)) if
 function restoreBackup(raw){
   const j=JSON.parse(raw); if(!j||!j.docs) throw new Error("No es una copia de Clash Alerter.");
   for(const [k,v] of Object.entries(j.docs)) save(k,v);
+}
+/* Avisa en la app cuando GitHub tiene una versión más nueva del APK */
+const UPD={latest:null, url:null, notes:"", checked:0, error:null};
+function verNum(v){ const m=String(v||"").match(/(\d+)\s*$/); return m?+m[1]:0; }
+async function checkUpdate(force){
+  if(!NATIVE || !/^[\w.-]+\/[\w.-]+$/.test(UPDATE_REPO)) return;
+  if(!force && Date.now()-UPD.checked < 3*3600000) return;
+  UPD.checked=Date.now();
+  try{
+    const r=await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases/latest`, {headers:{"Accept":"application/vnd.github+json"}});
+    if(!r.ok) throw new Error(r.status===404?"No encuentro las versiones del repositorio (¿es privado?)":"GitHub respondió "+r.status);
+    const j=await r.json();
+    const apk=(j.assets||[]).find(a=>/\.apk$/i.test(a.name));
+    UPD.latest=j.tag_name; UPD.url=apk?apk.browser_download_url:j.html_url; UPD.notes=(j.body||"").trim(); UPD.error=null;
+  }catch(e){ UPD.error=String(e.message||e); }
+  render();
+  if(force) toast(UPD.error?UPD.error:(hasUpdate()?"Hay una versión nueva: "+UPD.latest:"Tienes la última versión"));
+}
+function hasUpdate(){ return UPD.latest && verNum(UPD.latest)>verNum(APP_VERSION); }
+function updateBanner(){
+  if(!hasUpdate()) return "";
+  return `<div class="panel upd"><div class="panel-head"><h2>Versión nueva disponible</h2><span class="muted small">Tienes la ${esc(APP_VERSION)} · nueva ${esc(UPD.latest)}</span></div>
+    ${UPD.notes?`<div class="small">${esc(UPD.notes.split("\n").filter(l=>l&&!/^(Co-Authored-By|Claude-Session):/i.test(l)).slice(0,6).join(" · "))}</div>`:""}
+    <div class="actions"><button class="btn primary big" data-act="updget">Descargar e instalar</button></div>
+    <div class="small muted">Se descarga el APK; ábrelo y pulsa Instalar. Tus cuentas y avisos se conservan.</div></div>`;
 }
 function checkDone(){
   const now=Date.now();
@@ -1255,7 +1284,12 @@ function settingsPanel(){
       <label for="slto">Me levanto a las<input id="slto" type="number" min="0" max="23" value="${esc(st.sleep?st.sleep.to:8)}"></label>
     </div>
     <div class="actions"><button class="btn" data-act="savetopic">Guardar ajustes</button></div>
-  </details>${backupPanel()}`;
+  </details>${backupPanel()}
+  <details class="panel"><summary>Acerca de</summary>
+    <div class="small">Clash Alerter ${esc(APP_VERSION)}${UPD.latest?` · última publicada: ${esc(UPD.latest)}`:""}</div>
+    ${UPD.error?`<div class="small muted">${esc(UPD.error)}</div>`:""}
+    <div class="actions"><button class="btn" data-act="updcheck">Buscar actualizaciones</button></div>
+  </details>`;
   return backupPanel()+`<details class="panel">
     <summary>Avisos en el móvil (Claude)</summary>
     <div class="small">Los avisos te llegan como <b>notificación de la app de Claude</b>. Una tarea programada revisa tus mejoras cada 2 horas y deja preparado un aviso a la hora exacta en que termina cada una. No tienes que pulsar nada: basta con apuntar las mejoras aquí o reimportar el JSON.</div>
@@ -1296,6 +1330,7 @@ function render(){
   app.innerHTML=`
   <div class="top"><div><h1>Clash Alerter</h1><div class="sub">${S.mode==="db"?"Sincronizado entre tus dispositivos":"Guardado en este navegador"}</div></div></div>
   ${S.note?`<div class="banner">${esc(S.note)}</div>`:""}
+  ${updateBanner()}
   ${accs.length?`<div class="tabs" role="toolbar" aria-label="Cuentas">
     <button class="tab plain" aria-pressed="${S.view==="all"}" data-act="view" data-v="all">Resumen</button>
     ${accs.map(a=>`<button class="tab acc" style="--ac:${accColor(a)}" aria-pressed="${S.view===a._id}" data-act="view" data-v="${esc(a._id)}">${img("big_"+ID_TH,a.th||1)}${esc(a.name)}</button>`).join("")}
@@ -1460,6 +1495,12 @@ document.addEventListener("click",ev=>{
     const n=Math.max(1,Math.min(have, parseInt((document.getElementById("wn-"+l+"-"+acc._id)||{}).value,10)||1));
     const inv=JSON.parse(JSON.stringify(acc.inv||{})); addInv(inv,id,l,-n); addInv(inv,id,l+1,n);
     saveAcc({...acc, inv}); toast(n+" muro"+(n>1?"s":"")+" a nivel "+(l+1)); return;
+  }
+  if(act==="updcheck"){ checkUpdate(true); return; }
+  if(act==="updget"){
+    if(!UPD.url) return;
+    if(P.Browser) P.Browser.open({url:UPD.url}); else window.open(UPD.url,"_system");
+    return;
   }
   if(act==="nperm"){ (async()=>{ try{ const p=await P.LocalNotifications.requestPermissions(); NOTIF.perm=p.display; }catch(e){} render(); syncNotifications(); })(); return; }
   if(act==="nexact"){ (async()=>{ try{ await P.LocalNotifications.changeExactNotificationSetting(); const x=await P.LocalNotifications.checkExactNotificationSetting(); NOTIF.exact=x.exact_alarm; }catch(e){} render(); })(); return; }

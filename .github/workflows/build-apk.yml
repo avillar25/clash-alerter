@@ -55,4 +55,5 @@ jobs:
           tag_name: v${{ github.run_number }}
           name: Clash Alerter ${{ github.run_number }}
           make_latest: true
+          body: ${{ github.event.head_commit.message }}
           files: clash-alerter.apk
