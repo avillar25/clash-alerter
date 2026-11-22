@@ -559,6 +559,7 @@ const BOOSTS = {
   cpot:{name:"Poción de torre del reloj", icon:"mi_cpot", ws:["bb","bl"], speed:10, min:30, desc:"Torre del reloj x10 durante 30 minutos"},
 };
 const BOOSTS_BY_W = {b:["bpot","bite","appr"], l:["rpot","soup","lass"], p:["ppot","soup"], bb:["clock","cpot"], bl:["clock","cpot"]};
+const CLOCK_CD_H = 22;   // la torre del reloj gratis se recarga 22 h después de acabar el impulso
 function clockMinutes(acc){ const l=maxLvl(acc.inv||{},1000039); return l?12+2*l:14; }
 /* Tiempo que queda tras acelerar a speed x durante durMs */
 function boostedLeft(left, speed, durMs){ return left <= speed*durMs ? left/speed : left-(speed-1)*durMs; }
@@ -913,7 +914,7 @@ function helpersHtml(acc, vil, now){
   }
   if(vil==="bb" && (acc.clock || maxLvl(acc.inv||{},1000039))){
     const ready=!(acc.clock>now);   // sin dato de recarga (cuentas importadas antes de esta función) = disponible
-    out.push(`<div class="hp ${ready?"ready":""}">${img("clock",0)}<div><b>Torre del reloj</b>${ready?"Disponible":`<span class="num" data-end="${acc.clock}" data-plain="1">${fmtCountdown(acc.clock-now)}</span>`}</div></div>`);
+    out.push(`<div class="hp ${ready?"ready":""}">${img("clock",0)}<div><b>Torre del reloj</b>${ready?`Disponible · ${clockMinutes(acc)} min`:`<span class="num" data-end="${acc.clock}" data-plain="1">${fmtCountdown(acc.clock-now)}</span>`}</div></div>`);
   }
   return out.length?`<div><div class="acc-label" style="margin-bottom:6px">${vil==="bb"?"Torre del reloj":"Ayudantes · según la última importación"}</div><div class="helpers">${out.join("")}</div></div>`:"";
 }
@@ -1470,6 +1471,20 @@ document.addEventListener("click",ev=>{
       <div>Se quita de la lista y vuelve al nivel ${up.from}.${del?" También se borra el aviso programado en ntfy (se abre una pestaña).":""}</div>
       <div class="actions">${del?`<a class="btn danger big" href="${esc(del)}" target="_blank" rel="noopener" data-act="docancel" data-acc="${esc(acc._id)}" data-u="${esc(up.u)}">Cancelar y borrar aviso</a>`:`<button class="btn danger big" data-act="docancel" data-acc="${esc(acc._id)}" data-u="${esc(up.u)}">Cancelar mejora</button>`}<button class="btn big" data-act="close">Volver</button></div>
     </div></div>`;
+    return;
+  }
+  if(act==="boost" && el.dataset.k==="clock"){
+    // Torre del reloj: se aplica al momento con la duración de su nivel, sin preguntar
+    const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
+    const now=Date.now();
+    const go=()=>{
+      const min=clockMinutes(acc), r=applyBoost(acc,"clock",now,{min});
+      r.acc.clock=now+min*60000+CLOCK_CD_H*3600000;
+      saveAcc(r.acc);
+      toastAction(`Torre del reloj (${min} min) aplicada a ${r.changed.length} mejora${r.changed.length===1?"":"s"}. Vuelve a estar lista ${fmtWhen(r.acc.clock)}.`, "Deshacer", ()=>{ saveAcc(acc); render(); toast("Torre del reloj deshecha"); });
+    };
+    if(acc.clock>now) toastAction("La torre del reloj se está recargando: lista "+fmtWhen(acc.clock)+".", "Usar con gemas", go);
+    else go();
     return;
   }
   if(act==="boost"){
