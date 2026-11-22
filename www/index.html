@@ -912,7 +912,7 @@ function helpersHtml(acc, vil, now){
     out.push(`<div class="hp ${ready?"ready":""}">${img("h_"+id,0)}<div><b>${esc(HELPERS[id])}</b>${ready?"Disponible":`<span class="num" data-end="${h.end}" data-plain="1">${fmtCountdown(h.end-now)}</span>`}</div></div>`);
   }
   if(vil==="bb" && (acc.clock || maxLvl(acc.inv||{},1000039))){
-    const ready=acc.clock<=now;
+    const ready=!(acc.clock>now);   // sin dato de recarga (cuentas importadas antes de esta función) = disponible
     out.push(`<div class="hp ${ready?"ready":""}">${img("clock",0)}<div><b>Torre del reloj</b>${ready?"Disponible":`<span class="num" data-end="${acc.clock}" data-plain="1">${fmtCountdown(acc.clock-now)}</span>`}</div></div>`);
   }
   return out.length?`<div><div class="acc-label" style="margin-bottom:6px">${vil==="bb"?"Torre del reloj":"Ayudantes · según la última importación"}</div><div class="helpers">${out.join("")}</div></div>`:"";
