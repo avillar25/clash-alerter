@@ -101,6 +101,7 @@ details.sub{border:1px dashed var(--line);border-radius:10px;padding:4px 10px;ma
 .freenow .who{display:flex;flex-wrap:wrap;gap:6px}
 .evrow{display:flex;gap:10px;align-items:center;padding:6px 0}
 .evrow .ei{font-size:22px}
+.sub.maxl{color:var(--accent,var(--gold));font-weight:600}
 .hp.ready{background:var(--ok-soft);border-color:transparent}
 /* mejoras en curso */
 .list{display:flex;flex-direction:column;gap:10px}
@@ -453,6 +454,23 @@ const ID_HEROHALL = 1000071;
 /* Héroes: los desbloquea el Consejo heroico y cada nivel pide un nivel de Consejo */
 function heroHallLevel(acc){ return maxLvl(acc.inv||{}, ID_HEROHALL); }
 function heroHallReq(id, from){ const c=CAT[id]; return c&&c.hh&&from<c.hh.length ? c.hh[from] : 0; }
+/* Hasta qué nivel puedes subir algo ahora (ayuntamiento y, en héroes, Consejo heroico) y con el siguiente ayuntamiento */
+function maxInfo(acc, vil, id){
+  const c=CAT[id], lim=hallLevel(acc,vil), hh=heroHallLevel(acc);
+  const cap=(L,h)=>{ let m=0; const top=c.sc||c.d.length; for(let x=1;x<=top;x++){ if((c.r[x-1]||0)<=L && (!c.hh||(c.hh[x-1]||0)<=h)) m=x; else break; } return m; };
+  const now=cap(lim,hh), byTh=cap(lim,99), next=cap(lim+1,99), all=c.sc||c.d.length;
+  return {now, byTh, next:next>byTh?next:0, sc:c.sc&&maxAt(id,lim,true)>c.sc?maxAt(id,lim,true)-c.sc:0, all};
+}
+function maxTxt(acc, vil, id){
+  const m=maxInfo(acc,vil,id), H=VIL[vil].hall.toLowerCase(), lim=hallLevel(acc,vil);
+  if(!m.now && !m.byTh) return "";
+  let s=`Máx. nivel ${m.now}`;
+  if(m.byTh>m.now) s+=` (${m.byTh} al subir el Consejo heroico)`;
+  if(m.sc) s+=` + ${m.sc} supercarga${m.sc>1?"s":""}`;
+  if(m.next) s+=` · ${m.next} en ${H} ${lim+1}`;
+  else if(m.byTh>=m.all) s+=" · nivel máximo del juego";
+  return s;
+}
 function lockInfo(acc, vil, id, from){
   const th=reqLevel(id,from), hh=heroHallReq(id,from);
   if(th>hallLevel(acc,vil)) return "pide nivel "+th;
@@ -1216,7 +1234,8 @@ function catalogHtml(acc, vil){
       const top=Math.max(...rows.map(x=>x.from));
       return `<div class="igroup">
         <div class="ihead"><div class="tile sm">${img(id, Math.max(1,top))}</div><div><div class="nm">${esc(c.n)}</div>
-          <div class="sub">${S.catNew?"Construir nuevo":[have?`${have} disponible${have===1?"":"s"}`:"",busyN?`${busyN} mejorando`:""].filter(Boolean).join(" · ")}</div></div></div>
+          <div class="sub">${S.catNew?"Construir nuevo":[have?`${have} disponible${have===1?"":"s"}`:"",busyN?`${busyN} mejorando`:""].filter(Boolean).join(" · ")}</div>
+          <div class="sub maxl">${esc(maxTxt(acc,vil,id))}</div></div></div>
         <div class="ilevels">${rows.map(x=>{ const d=effDur(acc,x.id,x.from), cost=catCost(x.id,x.from);
           return `<div class="ilvl ${x.lock?"locked":""}">
             <div class="lvtxt"><span class="lvl ${CAT[x.id].sc&&x.from>=CAT[x.id].sc?"sc":""}">${x.from===0?"Construir nuevo":esc(stepTxt(x.id,x.from))}</span>${x.isNew?`<span class="small muted">${x.cnt>1?`te faltan ${x.cnt}`:"te falta 1"}</span>`:(x.cnt>1?`<b class="cnt">×${x.cnt}</b>`:"")}${x.busy?`<span class="small muted">cuando acabe la actual</span>`:""}${x.lock?`<span class="small muted">${esc(lockInfo(acc,vil,x.id,x.from))}</span>`:""}</div>
