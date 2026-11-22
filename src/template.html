@@ -83,6 +83,24 @@ h1{font-size:26px;line-height:1.1} h2{font-size:20px} h3{font-size:15px}
 .hp img{width:30px;height:30px;object-fit:contain}
 .hp b{display:block;font-size:13px}
 .hp select.hlvl{display:block;font:inherit;font-size:12px;padding:1px 4px;margin:2px 0;border-radius:6px;border:1px solid var(--line);background:var(--card,transparent);color:inherit}
+.miinv{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin:8px 0}
+.mii{display:grid;grid-template-columns:30px 1fr;align-items:center;gap:2px 6px;padding:6px;border:1px solid var(--line);border-radius:10px;background:var(--raise)}
+.mii img{width:30px;height:30px;object-fit:contain;grid-row:span 2}
+.mii .mn{font-size:12px;line-height:1.15}
+.mii .mctl{display:flex;align-items:center;gap:6px}
+.mii .mctl .btn.icon{min-width:30px;min-height:30px;padding:0}
+.mii.zero{opacity:.6}
+.micnt{font-size:12px;font-weight:600;color:var(--ok);margin-left:4px}
+.micnt.zero{color:var(--muted)}
+.mrow.dim{opacity:.55}
+details.sub{border:1px dashed var(--line);border-radius:10px;padding:4px 10px;margin:8px 0}
+.maxest{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--raise)}
+.maxest .k{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700}
+.maxest .v{font-family:var(--display);font-size:22px}
+.freenow.has{border-color:var(--ok)!important}
+.freenow .who{display:flex;flex-wrap:wrap;gap:6px}
+.evrow{display:flex;gap:10px;align-items:center;padding:6px 0}
+.evrow .ei{font-size:22px}
 .hp.ready{background:var(--ok-soft);border-color:transparent}
 /* mejoras en curso */
 .list{display:flex;flex-direction:column;gap:10px}
@@ -410,6 +428,8 @@ function fmtNum(n){
 }
 const DTF = new Intl.DateTimeFormat("es-ES",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
 const TF = new Intl.DateTimeFormat("es-ES",{hour:"2-digit",minute:"2-digit"});
+const DF = new Intl.DateTimeFormat("es-ES",{day:"numeric",month:"long",year:"numeric"});
+function fmtDate(ms){ return DF.format(new Date(ms)); }
 function fmtWhen(ms){
   const d=new Date(ms), now=new Date();
   const sameDay=(a,b)=>a.toDateString()===b.toDateString();
@@ -503,6 +523,12 @@ function applyDone(acc, now){
 }
 /* Terminar una mejora antes de tiempo, como en el juego: con gemas o con el libro que toque */
 const FINISH = {hb:["Martillo de construcción","mi_hb"], hh:["Martillo de héroes","mi_hh"], hf:["Martillo de pelea","mi_hf"], hs:["Martillo de hechizos","mi_hs"], gems:["Gemas","mi_gems"], build:["Libro de construcción","mi_build"], hero:["Libro de héroes","mi_hero"], fight:["Libro de pelea","mi_fight"], spell:["Libro de hechizos","mi_spell"], all:["Libro de todo","mi_all"], time:["Tiempo cumplido",null]};
+/* Inventario de objetos mágicos (se apunta a mano; el JSON del juego no los trae) */
+const MI_KEYS = ["build","hero","fight","spell","all","hb","hh","hf","hs","bpot","rpot","ppot","bite","soup","cpot"];
+function miName(k){ return FINISH[k]?FINISH[k][0]:(BOOSTS[k]||{}).name||k; }
+function miIcon(k){ return FINISH[k]?FINISH[k][1]:(BOOSTS[k]||{}).icon; }
+function miHave(acc,k){ return acc.mi ? (+acc.mi[k]||0) : null; }   // null = no lleva la cuenta
+function useItem(acc,k){ if(!acc.mi||!MI_KEYS.includes(k)) return acc; const n=+acc.mi[k]||0; return {...acc, mi:{...acc.mi, [k]:Math.max(0,n-1)}}; }
 function finishOptions(up){
   const g=(CAT[up.id]||{}).g||"";
   if(g.startsWith("bb_")) return ["gems"];               // en la base del constructor no hay libros
@@ -534,7 +560,7 @@ function hammerUpgrade(acc, id, from, m, now){
 function magicAdvice(acc, now){
   const ups=(acc.ups||[]).filter(u=>u.end>now&&vilOf(u.id)==="h");
   const bookBest=k=>ups.filter(u=>finishOptions(u).includes(k)).sort((a,b)=>(b.end-a.end))[0]||null;
-  const items=catalogItems(acc,"h").filter(x=>!x.lock&&!x.busy&&!x.isNew&&x.from>0);
+  const items=catalogItems(acc,"h").filter(x=>!x.lock&&!x.busy&&!x.isNew&&x.from>0&&x.id!==ID_TH);   // el ayuntamiento se sube al final, no con martillo
   const hamBest=k=>items.filter(x=>hammerFor(x.id)===k).map(x=>({...x,d:effDur(acc,x.id,x.from)})).sort((a,b)=>b.d-a.d)[0]||null;
   return {
     books:["build","hero","fight","spell","all"].map(k=>({k, up:bookBest(k)})),
@@ -613,18 +639,23 @@ function nextFree(acc, w, now){
 /* Lo que falta para maximizar el ayuntamiento actual (o el taller) */
 function progress(acc, vil, now){
   const lim=hallLevel(acc,vil); let cur=0, max=0, items=0;
-  const time={b:0,l:0,p:0,bb:0,bl:0}, cost={}, byG={};
-  const take=(id, lvl, startFrom, n)=>{
+  const time={b:0,l:0,p:0,bb:0,bl:0}, chain={b:0,l:0,p:0,bb:0,bl:0}, cost={}, byG={};
+  const take=(id, lvl, startFrom, n, extra=0)=>{
     const c=CAT[id]; if(!c||vilOf(id)!==vil||c.g.endsWith("_wal")) return;
     const m=maxAt(id,lim); if(m<=0) return;
     cur+=Math.min(lvl,m)*n; max+=m*n;
     const G=(byG[c.g]=byG[c.g]||{cur:0,max:0}); G.cur+=Math.min(lvl,m)*n; G.max+=m*n;
-    for(let x=startFrom; x<m; x++){ time[c.w]+=effDur(acc,id,x)*n; const k=c.res||"?"; cost[k]=(cost[k]||0)+catCost(id,x)*n; }
+    let ch=extra;
+    for(let x=startFrom; x<m; x++){ const dd=effDur(acc,id,x); ch+=dd; time[c.w]+=dd*n; const k=c.res||"?"; cost[k]=(cost[k]||0)+catCost(id,x)*n; }
+    chain[c.w]=Math.max(chain[c.w], ch);   // un mismo edificio no se puede mejorar en paralelo
     if(startFrom<m) items+=n;
   };
   for(const [id,lv] of Object.entries(acc.inv||{})) for(const [l,cnt] of Object.entries(lv)) take(+id,+l,+l,cnt);
-  for(const u of acc.ups||[]) if(vilOf(u.id)===vil){ take(u.id,u.from,u.to,1); const c=CAT[u.id]; if(c&&!c.g.endsWith("_wal")) time[u.w]+=Math.max(0,u.end-now); }
-  return {pct:max?cur/max:0, time, cost, items, lim, byG};
+  for(const u of acc.ups||[]) if(vilOf(u.id)===vil){ const left=Math.max(0,u.end-now); take(u.id,u.from,u.to,1,left); const c=CAT[u.id]; if(c&&!c.g.endsWith("_wal")) time[u.w]+=left; }
+  // 7: cuándo lo tendrías todo al máximo sin dejar a nadie parado (ni contar muros)
+  const est={}; let doneAt=now, slow=null;
+  for(const w of VIL[vil].workers){ const cap=(acc.cap||{})[w]||0; if(!cap||!time[w]) continue; est[w]=Math.max(time[w]/cap, chain[w]); if(now+est[w]>doneAt){ doneAt=now+est[w]; slow=w; } }
+  return {pct:max?cur/max:0, time, cost, items, lim, byG, est, doneAt, slow};
 }
 /* Horario de sueño: no se empieza nada entre esas horas */
 function sleepAdjust(ts, sl){
@@ -667,6 +698,34 @@ function simulatePlan(acc, vil, now, sl){
     rows.push({p, w:c.w, slot:bi+1, start, end, dur, wait:start-ready});
   }
   return {rows, last, idle};
+}
+/* 6: propone un orden de mejoras. Primero lo que más pesa en ataque y en el progreso
+   (laboratorio, consejo heroico, herrería, castillo, campamentos, héroes), luego lo nuevo y las
+   defensas, después trampas y recursos, y el ayuntamiento al final. Dentro de cada grupo, lo más atrasado primero. */
+const PRIO_ID = {1000007:0, 1000071:0, 1000070:0, 1000014:0, 1000000:0, 1000068:0, 1000105:1, 1000039:1, 1000046:0, 1000001:9, 1000034:9};
+const PRIO_G = {h_her:0.5, bb_her:0.5, h_arm:1, bb_arm:1, h_def:2, bb_def:2, h_grd:2, h_trp:3, bb_trp:3, h_wrk:3, bb_wrk:3, h_res:4, bb_res:4,
+  h_trp2:0, h_spl:0, h_sie:1, h_pet:0, bb_trp2:0};
+function suggestPlan(acc, vil, now){
+  const keep={catNew:S.catNew, catQ:S.catQ, catAll:S.catAll}; S.catNew=false; S.catQ=""; S.catAll=false;
+  let items; try{ items=catalogItems(acc,vil); } finally { Object.assign(S,keep); }
+  const lim=hallLevel(acc,vil), inPlan=new Set((acc.plan||[]).map(p=>p.id+":"+p.from));
+  const seen=new Set(), byW={};
+  for(const x of items){
+    const c=CAT[x.id]; if(!c||x.lock||c.g.endsWith("_wal")) continue;
+    const key=x.id+":"+x.from; if(seen.has(key)||inPlan.has(key)) continue; seen.add(key);
+    const m=maxAt(x.id,lim)||1, behind=x.isNew?1:(m-x.from)/m;
+    const prio=(x.id in PRIO_ID)?PRIO_ID[x.id]:(x.isNew&&!c.g.endsWith("_res")?1.5:(PRIO_G[c.g]??3));
+    (byW[c.w]=byW[c.w]||[]).push({id:x.id, from:x.from, prio, behind, d:effDur(acc,x.id,x.from)});
+  }
+  const per={b:2, l:3, p:2, bb:2, bl:3}, out=[];
+  for(const w of VIL[vil].workers){
+    const cap=(acc.cap||{})[w]||0; if(!cap||!byW[w]) continue;
+    const have=(acc.plan||[]).filter(p=>CAT[p.id]&&CAT[p.id].w===w).length;
+    const n=Math.max(0, per[w]*cap - have); if(!n) continue;
+    byW[w].sort((a,b)=>a.prio-b.prio || b.behind-a.behind || b.d-a.d);
+    out.push(...byW[w].slice(0,n).map(x=>({k:rid(), id:x.id, from:x.from})));
+  }
+  return out;
 }
 function planFrom(acc, id, from, cnt){
   let f=from;
@@ -803,6 +862,25 @@ async function initStore(){
   }
 }
 /* Notificaciones del propio móvil: se reprograman todas cada vez que cambia algo */
+/* Eventos fijos del juego (horas en UTC, como los publica Supercell) */
+function gameEvents(now, days=40){
+  const out=[], d=new Date(now), H=3600000;
+  for(let mo=-1; mo<=1; mo++){
+    const y=d.getUTCFullYear(), m=d.getUTCMonth()+mo, U=(day,h)=>Date.UTC(y,m,day,h), ym=y+"-"+m;
+    out.push({k:"cwl"+ym, at:U(1,8), ico:"⚔️", title:"Empieza la Liga de guerra de clanes", body:"Del 1 al 11 de este mes. Revisa que tu clan esté apuntado."});
+    out.push({k:"cg"+ym, at:U(22,8), ico:"🎯", title:"Empiezan los Juegos del clan", body:"Del 22 al 28. Completa desafíos para llenar el marcador."});
+    out.push({k:"cge"+ym, at:U(27,8), ico:"🎯", title:"Último día de los Juegos del clan", body:"Mañana acaban. Aprovecha para terminar desafíos."});
+    out.push({k:"se"+ym, at:U(1,8)-24*H+0*0, ico:"🏅", title:"Último día de la temporada", body:"Mañana empieza la nueva temporada y el pase de oro. Reclama las recompensas pendientes del pase."});
+  }
+  for(let i=-3;i<=days;i++){
+    const x=new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()+i));
+    if(x.getUTCDay()!==5) continue;
+    const st=Date.UTC(x.getUTCFullYear(),x.getUTCMonth(),x.getUTCDate(),7);
+    out.push({k:"rw"+st, at:st, ico:"🏰", title:"Empieza el fin de semana de asaltos", body:"Hasta el lunes. Usa tus ataques en la capital del clan."});
+    out.push({k:"rwe"+st, at:st+60*H, ico:"🏰", title:"Últimas horas del fin de semana de asaltos", body:"Acaba mañana a primera hora. ¿Te quedan ataques?"});
+  }
+  return out.filter(e=>e.at>now && e.at<now+days*24*H).sort((a,b)=>a.at-b.at);
+}
 const NOTIF = {perm:null, exact:null};
 function nid(s){ let h=7; for(const ch of s) h=(h*31+ch.charCodeAt(0))|0; return Math.abs(h)%2000000000+1; }
 async function initNotifications(){
@@ -818,19 +896,34 @@ function plannedNotifications(now){
   const list=[], st=settings(), idleOn=st.idleOn!==false, idleH=+(st.idleH||2);
   const EMO={b:"⚒️",bb:"⚒️",l:"🧪",bl:"🧪",p:"🐾"};
   const FREE={b:"Constructor libre",bb:"Constructor de la base libre",l:"Laboratorio libre",bl:"Laboratorio estelar libre",p:"Casa de mascotas libre"};
+  const sl=st.sleep||{from:0,to:8};
   for(const a of accounts()){
+    // 2: qué toca después según el plan de cada trabajador
+    const next={};
+    for(const vil of ["h","bb"]){
+      if(!(a.plan||[]).some(p=>vilOf(p.id)===vil)) continue;
+      const rows=simulatePlan(a,vil,now,sl).rows.filter(r=>!r.err).sort((x,y)=>x.start-y.start), used=new Set();
+      const ups=(a.ups||[]).filter(u=>vilOf(u.id)===vil&&!u.gob&&u.end>now).sort((x,y)=>x.end-y.end);
+      for(const u of ups){ const r=rows.find(r=>!used.has(r)&&r.w===u.w&&r.start>=u.end-60000&&r.start<=u.end+14*3600000); if(r){ used.add(r); next[u.u]=r.p; } }
+    }
+    const nxt=u=>next[u.u]?`${CAT[next[u.u].id].n} ${stepTxt(next[u.u].id,next[u.u].from)}`:"";
+    // 1: ayudantes listos otra vez
+    for(const [hid,h] of Object.entries(a.helpers||{})) if(h&&h.end>now+5000&&HELPERS[hid])
+      list.push({id:nid(a._id+":helper:"+hid), title:`🧑‍🔧 ${a.name}: ${HELPERS[hid]} disponible`, body:`Ya puedes volver a usar ${HELPERS[hid].toLowerCase()==="aprendiz"?"al aprendiz":"al "+HELPERS[hid].toLowerCase()}.`, at:h.end});
     if(a.clock && a.clock>now+5000) list.push({id:nid(a._id+":clock"), title:`⏰ ${a.name}: torre del reloj lista`, body:"Ya puedes volver a activar la torre del reloj en la base del constructor.", at:a.clock});
     for(const u of a.ups||[]){
       if(u.end<=now+5000) continue;
       const n=(CAT[u.id]||{}).n||u.n||"Mejora";
-      list.push({id:nid(u.u+":end"), title:`${EMO[u.w]||"⚒️"} ${a.name}: ${n} terminada`, body:`${stepTxt(u.id,u.from)} · ${u.gob?(GOBLIN[u.w]||"Duende")+" libre":FREE[u.w]||"Trabajador libre"}`, at:u.end});
+      const nx=u.gob?"":nxt(u);
+      list.push({id:nid(u.u+":end"), title:`${EMO[u.w]||"⚒️"} ${a.name}: ${n} terminada`, body:`${stepTxt(u.id,u.from)} · ${u.gob?(GOBLIN[u.w]||"Duende")+" libre":FREE[u.w]||"Trabajador libre"}${nx?` → toca ${nx}`:""}`, at:u.end});
       if(idleOn && !u.gob){
         const at=u.end+idleH*3600000, cap=(a.cap||{})[u.w]||0;
         const busyThen=(a.ups||[]).filter(x=>x.w===u.w&&!x.gob&&x.end>at).length;
-        if(cap && busyThen<cap) list.push({id:nid(u.u+":idle"), title:`💤 ${a.name}: ${(WORKER_SHORT[u.w]||"trabajador").toLowerCase()} sin trabajo`, body:`Lleva ${idleH} h libre desde que terminó ${n}. Pon otra mejora.`, at});
+        if(cap && busyThen<cap) list.push({id:nid(u.u+":idle"), title:`💤 ${a.name}: ${(WORKER_SHORT[u.w]||"trabajador").toLowerCase()} sin trabajo`, body:`Lleva ${idleH} h libre desde que terminó ${n}. ${nx?`Según tu plan toca ${nx}.`:"Pon otra mejora."}`, at});
       }
     }
   }
+  if(st.evOn!==false) for(const e of gameEvents(now)) list.push({id:nid("ev:"+e.k), title:`${e.ico} ${e.title}`, body:e.body, at:e.at});
   return list;
 }
 let syncing=false, syncAgain=false;
@@ -991,7 +1084,8 @@ function progressHtml(acc, vil, now){
     <div class="prog">${ringSvg(p.pct, vil==="bb"?"var(--night)":"var(--gold)")}
       <div class="small">${p.items?`Te quedan <b>${p.items}</b> mejoras para tenerlo todo al máximo en ${esc(VIL[vil].hall.toLowerCase())} ${p.lim}.`:"Todo al máximo para tu nivel. Toca subir el "+esc(VIL[vil].hall.toLowerCase())+"."}</div>
     </div>
-    ${ws.length?`<div class="stats">${ws.map(w=>{ const n=cap[w]||1; return `<div class="stat"><div class="k">${esc(WORKER[w])}${n>1?` (${n})`:""}</div><div class="v">${fmtDur(p.time[w]/n)}</div></div>`; }).join("")}</div>`:""}
+    ${p.items&&p.slow?`<div class="maxest"><div class="k">Todo al máximo, sin dejar a nadie parado</div><div class="v">${esc(fmtDate(p.doneAt))}</div><div class="small muted">Dentro de ${fmtDur(p.doneAt-now)} · lo que más tarda: ${esc(WORKER[p.slow].toLowerCase())}${gpFor(acc,"b")||gpFor(acc,"l")?" · con tu descuento del pase":""}. Después ya puedes subir el ${esc(VIL[vil].hall.toLowerCase())}.</div></div>`:""}
+    ${ws.length?`<div class="stats">${ws.map(w=>{ const n=cap[w]||1; return `<div class="stat"><div class="k">${esc(WORKER[w])}${n>1?` (${n})`:""}</div><div class="v">${fmtDur(p.est&&p.est[w]?p.est[w]:p.time[w]/n)}</div></div>`; }).join("")}</div>`:""}
     ${costs.length?`<div><div class="acc-label" style="margin-bottom:4px">Recursos que faltan</div><div class="costs">${costs.map(([r,v])=>`<span class="cost">${resIcon(r)}${fmtNum(v)}</span>`).join("")}</div></div>`:""}
     <div><div class="acc-label" style="margin-bottom:6px">Por categoría</div><div class="cats">${GROUPS.filter(([g])=>p.byG[g]&&p.byG[g].max).map(([g,n])=>{ const G=p.byG[g], pc=G.cur/G.max;
       return `<div class="catrow"><span class="cn">${esc(n)}</span><span class="cb"><i style="width:${(pc*100).toFixed(1)}%;background:${pc>=1?"var(--ok)":pc<.6?"var(--warn)":(vil==="bb"?"var(--night)":"var(--gold)")}"></i></span><span class="cp num">${Math.floor(pc*100)}%</span></div>`; }).join("")}</div></div>
@@ -1035,7 +1129,8 @@ function planHtml(acc, vil, now){
     }).join("")}</div>
     ${lootHtml(rows, now)}
     ${sl&&sl.from!==sl.to?`<div class="small muted">No se programa nada entre las ${sl.from}:00 y las ${sl.to}:00 (horario de sueño, en Ajustes del Resumen).</div>`:""}
-    <div class="actions"><button class="btn" data-act="pclear" data-acc="${esc(acc._id)}">Vaciar plan</button></div>`:`<div class="empty">Sin plan. Pulsa <b>+ Plan</b> en las mejoras que quieras hacer después y verás cuándo empieza y acaba cada una.</div>`}
+    <div class="actions"><button class="btn" data-act="pfill" data-acc="${esc(acc._id)}">Rellenar con lo recomendado</button><button class="btn" data-act="pclear" data-acc="${esc(acc._id)}">Vaciar plan</button></div>`:`<div class="empty">Sin plan. Pulsa <b>+ Plan</b> en las mejoras que quieras hacer después, o deja que te lo proponga.</div>
+    <div class="actions"><button class="btn primary" data-act="pfill" data-acc="${esc(acc._id)}">Rellenar con lo recomendado</button></div>`}
   </div>`;
 }
 function catalogItems(acc, vil){
@@ -1179,17 +1274,25 @@ function nightHtml(acc, vil, now){
 }
 function magicHtml(acc, vil, now){
   if(vil!=="h") return "";
-  const a=magicAdvice(acc,now);
-  const brow=x=>{ const f=FINISH[x.k]; if(!x.up) return `<div class="mrow"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}</div><div class="sub">No hay nada en curso donde usarlo</div></div><span></span></div>`;
-    const u=x.up; return `<div class="mrow"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}</div><div class="sub">${esc(CAT[u.id].n)} ${esc(stepTxt(u.id,u.from))} · ahorras <b>${fmtDur(u.end-now)}</b></div></div>
-      <button class="btn" data-act="dofinish" data-m="${x.k}" data-acc="${esc(acc._id)}" data-u="${esc(u.u)}">Usar</button></div>`; };
-  const hrow=x=>{ const f=FINISH[x.k]; if(!x.it) return `<div class="mrow"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}</div><div class="sub">Nada disponible para mejorar</div></div><span></span></div>`;
-    const it=x.it; return `<div class="mrow"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}</div><div class="sub">${esc(CAT[it.id].n)} ${esc(stepTxt(it.id,it.from))} · ahorras <b>${fmtDur(it.d)}</b></div></div>
-      <button class="btn" data-act="hammer" data-acc="${esc(acc._id)}" data-id="${it.id}" data-from="${it.from}">Usar</button></div>`; };
-  return `<details class="panel"><summary>¿Dónde uso mis objetos mágicos?</summary>
+  const a=magicAdvice(acc,now), track=!!acc.mi;
+  const haveTxt=k=>{ const h=miHave(acc,k); return h===null?"":` <span class="micnt ${h?"":"zero"}">tienes ${h}</span>`; };
+  const can=k=>{ const h=miHave(acc,k); return h===null||h>0; };
+  const brow=x=>{ const f=FINISH[x.k]; if(!x.up) return `<div class="mrow"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}${haveTxt(x.k)}</div><div class="sub">No hay nada en curso donde usarlo</div></div><span></span></div>`;
+    const u=x.up; return `<div class="mrow ${can(x.k)?"":"dim"}"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}${haveTxt(x.k)}</div><div class="sub">${esc(CAT[u.id].n)} ${esc(stepTxt(u.id,u.from))} · ahorras <b>${fmtDur(u.end-now)}</b></div></div>
+      ${can(x.k)?`<button class="btn" data-act="dofinish" data-m="${x.k}" data-acc="${esc(acc._id)}" data-u="${esc(u.u)}">Usar</button>`:"<span></span>"}</div>`; };
+  const hrow=x=>{ const f=FINISH[x.k]; if(!x.it) return `<div class="mrow"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}${haveTxt(x.k)}</div><div class="sub">Nada disponible para mejorar</div></div><span></span></div>`;
+    const it=x.it; return `<div class="mrow ${can(x.k)?"":"dim"}"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}${haveTxt(x.k)}</div><div class="sub">${esc(CAT[it.id].n)} ${esc(stepTxt(it.id,it.from))} · ahorras <b>${fmtDur(it.d)}</b></div></div>
+      ${can(x.k)?`<button class="btn" data-act="hammer" data-acc="${esc(acc._id)}" data-id="${it.id}" data-from="${it.from}">Usar</button>`:"<span></span>"}</div>`; };
+  const books=track?a.books.filter(x=>miHave(acc,x.k)>0):a.books, hams=track?a.hammers.filter(x=>miHave(acc,x.k)>0):a.hammers;
+  const inv=`<div class="miinv">${MI_KEYS.map(k=>{ const h=miHave(acc,k)||0; return `<div class="mii ${h?"":"zero"}">${img(miIcon(k),0)}<span class="mn">${esc(miName(k))}</span>
+      <span class="mctl"><button class="btn icon" data-act="mi" data-k="${k}" data-d="-1" data-acc="${esc(acc._id)}" aria-label="Uno menos" ${h?"":"disabled"}>−</button><b class="num">${h}</b><button class="btn icon" data-act="mi" data-k="${k}" data-d="1" data-acc="${esc(acc._id)}" aria-label="Uno más">+</button></span></div>`; }).join("")}</div>`;
+  return `<details class="panel"><summary>Objetos mágicos</summary>
+    ${track?"":`<div class="small">Apunta los libros, martillos y pociones que tienes y te diré dónde usar solo esos. Se descuentan solos cuando los usas desde la app.</div>`}
+    <details class="sub" ${track?"":"open"}><summary>Lo que tengo</summary>${inv}</details>
     <div class="small muted">Cada objeto, en la mejora donde más tiempo te ahorra ahora mismo. Los libros terminan algo que ya está en curso; los martillos suben al instante algo que no se está mejorando.</div>
-    <div class="acc-label">Libros</div><div class="list">${a.books.map(brow).join("")}</div>
-    <div class="acc-label">Martillos</div><div class="list">${a.hammers.map(hrow).join("")}</div>
+    ${books.length?`<div class="acc-label">Libros</div><div class="list">${books.map(brow).join("")}</div>`:""}
+    ${hams.length?`<div class="acc-label">Martillos</div><div class="list">${hams.map(hrow).join("")}</div>`:""}
+    ${track&&!books.length&&!hams.length?`<div class="empty">No tienes libros ni martillos apuntados.</div>`:""}
   </details>`;
 }
 function historyHtml(acc, vil){
@@ -1252,6 +1355,29 @@ function occupancyHtml(accs, vil, now){
   }).join("");
   return `<div class="occbar ${freeTotal?"":"allbusy"}">${freeTotal?`<div class="occhead">Tienes <b>${freeTotal}</b> trabajador${freeTotal>1?"es":""} libre${freeTotal>1?"s":""}</div>`:`<div class="occhead">✓ Todo al máximo: no queda ningún trabajador libre</div>`}<div class="occs">${cells}</div></div>`;
 }
+/* 8: lo primero al abrir: quién tiene trabajadores libres ahora mismo */
+function freeNowHtml(accs, now){
+  const free=[]; let next=null;
+  for(const a of accs) for(const vil of ["h","bb"]) for(const w of VIL[vil].workers){
+    const nf=nextFree(a,w,now); if(!nf) continue;
+    if(nf.free) free.push({a,vil,w,n:nf.free});
+    else if(!next||nf.at<next.at) next={a,w,at:nf.at};
+  }
+  const NAME={b:["constructor","constructores"], l:["laboratorio","laboratorio"], p:["casa de mascotas","casa de mascotas"], bb:["constructor de la base","constructores de la base"], bl:["laboratorio estelar","laboratorio estelar"]};
+  const ready=accs.flatMap(a=>[...Object.entries(a.helpers||{}).filter(([id,h])=>HELPERS[id]&&h&&h.lvl&&!(h.end>now)).map(([id])=>({a,t:HELPERS[id],vil:"h"})),
+    ...((a.clock!==undefined||maxLvl(a.inv||{},1000039))&&!(a.clock>now)?[{a,t:"Torre del reloj",vil:"bb"}]:[])]);
+  const btn=(a,vil,txt)=>`<button class="accchip linkchip" style="--ac:${accColor(a)}" data-act="view" data-v="${esc(a._id)}" data-vil="${vil}">${esc(a.name)} · ${esc(txt)}</button>`;
+  return `<div class="panel freenow ${free.length?"has":""}">
+    <div class="panel-head"><h2>${free.length?"Libre ahora":"Todos trabajando"}</h2>${!free.length&&next?`<span class="muted small">Próximo libre: ${esc(next.a.name)}, ${esc(NAME[next.w][0])} ${esc(fmtWhen(next.at))}</span>`:""}</div>
+    ${free.length?`<div class="who">${free.map(f=>btn(f.a,f.vil,`${f.n>1?f.n+" ":""}${NAME[f.w][f.n>1?1:0]}`)).join("")}</div>`:""}
+    ${ready.length?`<div class="small muted" style="margin-top:6px">También listos: </div><div class="who">${ready.map(r=>btn(r.a,r.vil,r.t)).join("")}</div>`:""}
+  </div>`;
+}
+function eventsHtml(now){
+  const ev=gameEvents(now,21).filter(e=>!/Últimas horas|Último día de los/.test(e.title)).slice(0,4);
+  if(!ev.length) return "";
+  return `<details class="panel"><summary>Próximos eventos</summary><div class="list">${ev.map(e=>`<div class="evrow"><span class="ei">${e.ico}</span><div><b>${esc(e.title)}</b><div class="small muted">${esc(fmtWhen(e.at))}</div></div></div>`).join("")}</div></details>`;
+}
 function renderAll(now){
   const accs=accounts();
   if(!accs.length) return onboarding();
@@ -1269,9 +1395,11 @@ function renderAll(now){
       <div class="ln">${line("h")}</div>${a.bh?`<div class="ln">${line("bb")}</div>`:""}</div></button>`;
   };
   return `
+  ${freeNowHtml(accs,now)}
   <div class="panel"><div class="panel-head"><h2>Tus cuentas</h2><span class="muted small">Próximo trabajador libre</span></div><div class="accs">${accs.map(card).join("")}</div></div>
   ${sect("h")}
   ${sect("bb")}
+  ${eventsHtml(now)}
   ${settingsPanel()}`;
 }
 function accSettings(acc){
@@ -1311,6 +1439,7 @@ function settingsPanel(){
     <summary>Avisos</summary>
     ${nativeNotifHtml()}
     <label class="check" for="idleon"><input id="idleon" type="checkbox" ${idleOn?"checked":""}> Avisarme si un trabajador sigue libre</label>
+    <label class="check" for="evon"><input id="evon" type="checkbox" ${st.evOn!==false?"checked":""}> Avisarme de los eventos (Liga de guerra, Juegos del clan, asaltos, fin de temporada)</label>
     <div class="row">
       <label for="idleh">Horas libre antes de avisar<input id="idleh" type="number" min="1" max="24" value="${esc(st.idleH||2)}"></label>
       <label for="slfrom">Me acuesto a las<input id="slfrom" type="number" min="0" max="23" value="${esc(st.sleep?st.sleep.from:0)}"></label>
@@ -1324,9 +1453,8 @@ function settingsPanel(){
     <div class="actions"><button class="btn" data-act="updcheck">Buscar actualizaciones</button></div>
   </details>`;
   return backupPanel()+`<details class="panel">
-    <summary>Avisos en el móvil (Claude)</summary>
-    <div class="small">Los avisos te llegan como <b>notificación de la app de Claude</b>. Una tarea programada revisa tus mejoras cada 2 horas y deja preparado un aviso a la hora exacta en que termina cada una. No tienes que pulsar nada: basta con apuntar las mejoras aquí o reimportar el JSON.</div>
-    <div class="small muted">Para recibirlos, activa las notificaciones de la app de Claude en el móvil. Una mejora que dure menos de 2 horas puede quedarse sin aviso si empieza y acaba entre dos revisiones.</div>
+    <summary>Plan y horario</summary>
+    <div class="small">Los avisos al móvil llegan con la app Clash Alerter instalada. Aquí en la web solo se usa el horario de sueño para el plan.</div>
     <label class="check" for="idleon"><input id="idleon" type="checkbox" ${idleOn?"checked":""}> Avisarme si un trabajador sigue libre</label>
     <div class="row">
       <label for="idleh">Horas libre antes de avisar<input id="idleh" type="number" min="1" max="24" value="${esc(st.idleH||2)}"></label>
@@ -1419,7 +1547,7 @@ document.addEventListener("click",ev=>{
   const act=el.dataset.act;
   if(act==="close-bg"){ if(ev.target===el) closeModal(); return; }
   if(act==="close"){ closeModal(); return; }
-  if(act==="view"){ S.view=el.dataset.v; S.catQ=""; S.catG=""; S.catNew=false; render(); window.scrollTo(0,0); return; }
+  if(act==="view"){ if(el.dataset.vil) S.vil=el.dataset.vil; S.view=el.dataset.v; S.catQ=""; S.catG=""; S.catNew=false; render(); window.scrollTo(0,0); return; }
   if(act==="uptab"){ S.upTab[el.dataset.k]=el.dataset.w; render(); return; }
   if(act==="catg"){ S.catG=el.dataset.g; S.catQ=""; render(); return; }
   if(act==="vil"){ S.vil=el.dataset.v; S.catQ=""; S.catG=""; S.catNew=false; render(); return; }
@@ -1428,6 +1556,14 @@ document.addEventListener("click",ev=>{
     const id=+el.dataset.id, from=planFrom(acc,id,+el.dataset.from,+el.dataset.cnt||1);
     if(from>=CAT[id].d.length||!canUpgrade(id,from)){ toast("Ya está todo planificado hasta el máximo."); return; }
     saveAcc({...acc, plan:[...(acc.plan||[]), {k:rid(), id, from}]}); toast(CAT[id].n+" añadido al plan"); return;
+  }
+  if(act==="pfill"){
+    const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
+    const add=suggestPlan(acc,S.vil,Date.now());
+    if(!add.length){ toast("No hay nada más que proponer: el plan ya cubre a todos tus trabajadores."); return; }
+    saveAcc({...acc, plan:[...(acc.plan||[]), ...add]});
+    toastAction(`Añadidas ${add.length} mejoras al plan. Reordénalas con las flechas si quieres.`, "Deshacer", ()=>{ saveAcc(acc); render(); });
+    return;
   }
   if(act==="pmove"||act==="pdel"||act==="pclear"){
     const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
@@ -1486,7 +1622,7 @@ document.addEventListener("click",ev=>{
     const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
     const now=Date.now();
     const go=()=>{
-      const min=clockMinutes(acc), r=applyBoost(acc,"clock",now,{min});
+      const min=clockMinutes(acc), r=applyBoost(acc,"clock",now,{min});   // la torre es gratis: no gasta inventario
       r.acc.clock=now+min*60000+CLOCK_CD_H*3600000;
       saveAcc(r.acc);
       toastAction(`Torre del reloj (${min} min) aplicada a ${r.changed.length} mejora${r.changed.length===1?"":"s"}. Vuelve a estar lista ${fmtWhen(r.acc.clock)}.`, "Deshacer", ()=>{ saveAcc(acc); render(); toast("Torre del reloj deshecha"); });
@@ -1528,7 +1664,7 @@ document.addEventListener("click",ev=>{
       const cd=Math.max(0.5,+((document.getElementById("b-cd")||{}).value||7)||7);
       r.acc.clock=now+cd*3600000; r.acc.clockCdH=cd;
     } else if(!r.changed.length){ closeModal(); return; }
-    saveAcc(r.acc); closeModal();
+    saveAcc(useItem(r.acc,k)); closeModal();
     toast(BOOSTS[k].name+" aplicado a "+r.changed.length+" mejora"+(r.changed.length===1?"":"s")+(k==="clock"?". Podrás volver a usarla "+fmtWhen(r.acc.clock)+".":"."));
     return;
   }
@@ -1563,6 +1699,11 @@ document.addEventListener("click",ev=>{
     try{ restoreBackup(raw); S.view="all"; toast("Datos restaurados"); }catch(e){ toast(e.message.startsWith("No es")?e.message:"La copia no es válida."); }
     return;
   }
+  if(act==="mi"){
+    const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
+    const k=el.dataset.k, mi={...(acc.mi||{})}; mi[k]=Math.max(0,(+mi[k]||0)+(+el.dataset.d));
+    saveAcc({...acc, mi}); return;
+  }
   if(act==="hammer"){
     const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
     const id=+el.dataset.id, from=+el.dataset.from, k=hammerFor(id); if(!k) return;
@@ -1576,7 +1717,7 @@ document.addEventListener("click",ev=>{
   if(act==="dohammer"){
     const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
     const id=+el.dataset.id, from=+el.dataset.from;
-    saveAcc(hammerUpgrade(acc,id,from,el.dataset.k,Date.now())); closeModal();
+    saveAcc(useItem(hammerUpgrade(acc,id,from,el.dataset.k,Date.now()), el.dataset.k)); closeModal();
     toast(CAT[id].n+" a nivel "+(from+1)+" con "+FINISH[el.dataset.k][0].toLowerCase()); return;
   }
   if(act==="finish"){
@@ -1585,7 +1726,7 @@ document.addEventListener("click",ev=>{
     document.getElementById("modal-root").innerHTML=`<div class="modal-back" data-act="close-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="f-title">
       <div class="mhead"><div class="tile">${img(up.id,up.to)}</div><div><h2 id="f-title">Terminar ${esc(CAT[up.id].n)}</h2><div class="muted small">Nivel ${up.from} → ${up.to} · quedaban ${fmtDur(left)}</div></div></div>
       <div class="small">¿Cómo la has terminado?</div>
-      <div class="fopts">${opts.map(k=>`<button class="fopt" data-act="dofinish" data-m="${k}" data-acc="${esc(acc._id)}" data-u="${esc(up.u)}">${img(FINISH[k][1],0)}<span>${esc(FINISH[k][0])}</span></button>`).join("")}</div>
+      <div class="fopts">${opts.map(k=>{ const h=miHave(acc,k); return `<button class="fopt" data-act="dofinish" data-m="${k}" data-acc="${esc(acc._id)}" data-u="${esc(up.u)}">${img(FINISH[k][1],0)}<span>${esc(FINISH[k][0])}${h!==null&&k!=="gems"?`<small class="muted"> · tienes ${h}</small>`:""}</span></button>`; }).join("")}</div>
       ${vilOf(up.id)==="bb"?`<div class="small muted">En la base del constructor los libros no sirven, solo gemas.</div>`:""}
       <div class="actions"><button class="btn big" data-act="close">Volver</button></div>
     </div></div>`;
@@ -1594,7 +1735,7 @@ document.addEventListener("click",ev=>{
   if(act==="dofinish"){
     const [acc,up]=findUp(el.dataset.acc, el.dataset.u); if(!acc||!up) return;
     const al=((S.docs.alerts||{}).items||{})[up.u+":end"];
-    saveAcc(finishUpgrade(acc, up.u, el.dataset.m, Date.now())); closeModal();
+    saveAcc(useItem(finishUpgrade(acc, up.u, el.dataset.m, Date.now()), el.dataset.m)); closeModal();
     toast(CAT[up.id].n+" terminada con "+FINISH[el.dataset.m][0].toLowerCase()+(al?". El aviso que tenía programado puede llegarte igualmente.":""));
     return;
   }
@@ -1634,7 +1775,7 @@ document.addEventListener("click",ev=>{
   if(act==="savetopic"){
     const num=(id,d)=>{ const v=parseInt(document.getElementById(id).value,10); return isNaN(v)?d:v; };
     const sleep={from:Math.min(23,Math.max(0,num("slfrom",0))), to:Math.min(23,Math.max(0,num("slto",8)))};
-    save("settings", {...settings(), idleOn:document.getElementById("idleon").checked, idleH:Math.min(24,Math.max(1,num("idleh",2))), sleep}); toast("Ajustes de avisos guardados"); return;
+    save("settings", {...settings(), idleOn:document.getElementById("idleon").checked, evOn:(document.getElementById("evon")||{checked:settings().evOn!==false}).checked, idleH:Math.min(24,Math.max(1,num("idleh",2))), sleep}); toast("Ajustes de avisos guardados"); return;
   }
 });
 document.addEventListener("input",ev=>{ if(ev.target.id==="cat-q"){ S.catQ=ev.target.value; render(); } });
@@ -1656,7 +1797,7 @@ document.addEventListener("change",ev=>{
 });
 document.addEventListener("keydown",ev=>{ if(ev.key==="Escape") closeModal(); });
 }
-if(typeof module!=="undefined"){ module.exports={parseExport,mergeImport,applyDone,startUpgrade,cancelUpgrade,ntfyLink,catDur,effDur,CAT,busy,goblinUp,hammerFor,hammerUpgrade,magicAdvice,stepTxt,eqMax,maxAt,applyBoost,boostedLeft,finishUpgrade,finishOptions,progress,nextFree,maxAt,simulatePlan,sleepAdjust,planFrom,takeIdle,idleLink,unlockHeroes,lockInfo,catalogItems}; }
+if(typeof module!=="undefined"){ module.exports={parseExport,mergeImport,applyDone,startUpgrade,cancelUpgrade,ntfyLink,catDur,effDur,CAT,busy,goblinUp,hammerFor,hammerUpgrade,magicAdvice,stepTxt,eqMax,maxAt,applyBoost,boostedLeft,finishUpgrade,finishOptions,progress,nextFree,maxAt,simulatePlan,sleepAdjust,planFrom,takeIdle,idleLink,unlockHeroes,lockInfo,catalogItems,suggestPlan,gameEvents,plannedNotifications,useItem,S}; }
 else {
   fetch("images.json").then(r=>r.ok?r.json():null).then(j=>{ if(j){ IMG=j; render(); } }).catch(()=>{});
   initStore();
