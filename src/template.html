@@ -377,7 +377,7 @@ function stepTxt(id, from){
   return from?`${from} → ${from+1}`:"Nuevo";
 }
 const NTFY_MAX_MS = (3*86400 - 15*60) * 1000; // ntfy.sh admite hasta 3 días de retraso
-const ID_TH = 1000001, ID_BH = 1000034, ID_HUT = 1000015, ID_BOB = 1000064, ID_OTTO = 1000078;
+const ID_TH = 1000001, ID_BH = 1000034, ID_HUT = 1000015, ID_BOB = 1000064, ID_OTTO = 1000078, ID_BOTO = 1000047;
 const vilOf = id => (CAT[id] && CAT[id].g.startsWith("bb_")) ? "bb" : "h";
 const isLab = w => w==="l"||w==="bl"||w==="p";
 /* App nativa (Capacitor en Android): datos en el móvil y avisos con notificaciones locales */
@@ -457,6 +457,8 @@ function lockInfo(acc, vil, id, from){
 /* Al subir el Consejo heroico aparece el héroe nuevo a nivel 1, como en el juego */
 function unlockHeroes(acc){
   const inv=acc.inv||{}, L=maxLvl(inv, ID_HEROHALL); let ch=false;
+  // constructores de la base nocturna: Maestro + O.T.T.O. + B.O.T.O.
+  if(!acc.capManual && acc.cap){ const want=1+(inv[ID_OTTO]?1:0)+(inv[ID_BOTO]?1:0); if((acc.cap.bb||0)<want){ acc.cap={...acc.cap, bb:want}; ch=true; } }
   if(!L) return false;
   for(const [id,c] of Object.entries(CAT)){
     if(!c.hu||c.hu>L||inv[id]) continue;
@@ -475,13 +477,14 @@ function maxLvl(inv,id){ const o=inv[String(id)]; if(!o) return 0; return Math.m
 function parseExport(j){
   if(!j||typeof j!=="object"||!Array.isArray(j.buildings)) throw new Error("No parece el JSON exportado del juego: falta la lista de edificios.");
   const ts=(+j.timestamp||Math.floor(Date.now()/1000))*1000;
-  const inv={}, ups=[]; let hut=0, bob=false, otto=false, pet=false;
+  const inv={}, ups=[]; let hut=0, bob=false, otto=false, boto=false, pet=false;
   for(const sec of SECTIONS){
     for(const e of (j[sec]||[])){
       if(!e||typeof e!=="object"||typeof e.lvl!=="number") continue;
       if(e.data===ID_HUT) hut+=(e.cnt||1);
       if(e.data===ID_BOB) bob=true;
       if(e.data===ID_OTTO) otto=true;
+      if(e.data===ID_BOTO) boto=true;
       if(e.data===1000068) pet=true;
       if(!CAT[e.data]) continue;
       const scl=+(e.supercharge||e.sc||0); if(scl && CAT[e.data].sc) e={...e, lvl:CAT[e.data].sc+scl};
@@ -498,7 +501,7 @@ function parseExport(j){
   const clock = j.boosts && j.boosts.clocktower_cooldown ? ts+j.boosts.clocktower_cooldown*1000 : 0;
   const upTH=ups.filter(u=>u.id===ID_TH).map(u=>u.from), upBH=ups.filter(u=>u.id===ID_BH).map(u=>u.from);
   const th=Math.max(maxLvl(inv,ID_TH),...upTH,0), bh=Math.max(maxLvl(inv,ID_BH),...upBH,0);
-  return {tag:String(j.tag||""), th, bh, inv, ups, eq, helpers, clock, cap:{b:Math.max(1,hut)+(bob?1:0), l:1, p:pet?1:0, bb:1+(otto?1:0), bl:1}, imp:ts};
+  return {tag:String(j.tag||""), th, bh, inv, ups, eq, helpers, clock, cap:{b:Math.max(1,hut)+(bob?1:0), l:1, p:pet?1:0, bb:1+(otto?1:0)+(boto?1:0), bl:1}, imp:ts};
 }
 function mergeImport(acc, parsed){
   const old=[...(acc.ups||[])];
@@ -977,7 +980,7 @@ function updateBanner(){
 function checkDone(){
   const now=Date.now();
   for(const acc of accounts()){ const n=applyDone(acc,now);
-    if(!n){ const c={...acc, inv:JSON.parse(JSON.stringify(acc.inv||{}))}; if(unlockHeroes(c)){ saveAcc(c); toast(acc.name+": héroe nuevo desbloqueado"); } continue; }
+    if(!n){ const c={...acc, inv:JSON.parse(JSON.stringify(acc.inv||{}))}; const k0=Object.keys(c.inv).length; if(unlockHeroes(c)){ saveAcc(c); if(Object.keys(c.inv).length>k0) toast(acc.name+": héroe nuevo desbloqueado"); } continue; }
     if(n){ const names=n._justDone.map(d=>CAT[d.id]?.n).filter(Boolean); saveAcc(n); toast(acc.name+": "+names.join(", ")+(names.length>1?" terminadas":" terminada")); } }
 }
 
