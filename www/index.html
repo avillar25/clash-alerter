@@ -442,7 +442,12 @@ function catDur(id, from){ const c=CAT[id]; if(!c||from<0||from>=c.d.length) ret
 function catCost(id, from){ const c=CAT[id]; if(!c||from<0||from>=c.c.length) return 0; return c.c[from]||0; }
 function canUpgrade(id, from){ return catDur(id,from)>0; }
 function reqLevel(id, from){ const c=CAT[id]; return c && from<c.r.length ? c.r[from] : 0; }
-function gpFor(acc,w){ if(w==="bb"||w==="bl") return 0; const g=acc.gp||{}; return isLab(w) ? (+g.l||0) : (+g.b||0); }
+/* Pase de oro: también rebaja la base nocturna (el Helicóptero 22→23 sale 4 d en vez de 5 d con un 20 %).
+   Si no se ha puesto nada aparte para la base nocturna, usa el mismo % que la aldea. */
+function gpFor(acc,w){ const g=acc.gp||{};
+  if(w==="bb") return +(g.bb??g.b)||0;
+  if(w==="bl") return +(g.bl??g.l)||0;
+  return isLab(w) ? (+g.l||0) : (+g.b||0); }
 function effDur(acc,id,from){ const base=catDur(id,from); return Math.round(base*(1-gpFor(acc,CAT[id].w)/100)/1000)*1000; }
 const ID_HEROHALL = 1000071;
 /* Héroes: los desbloquea el Consejo heroico y cada nivel pide un nivel de Consejo */
@@ -1310,11 +1315,12 @@ function historyHtml(acc, vil){
       <span class="how ${d.m&&d.m!=="time"?"used":""}">${f[1]?img(f[1],0,"bi"):""}${esc(f[0])}</span></div>`;
   }).join("")}</div></details>`;
 }
-function boostHtml(acc){
-  const gp=acc.gp||{}, a=esc(acc._id);
-  const sel=(k,label)=>`<label class="boost" for="gp${k}-${a}">${img(k==="b"?"mi_build":"mi_spell",0,"bi")}<span>${label}</span>
-    <select id="gp${k}-${a}" data-boost="${k}" data-acc="${a}">${[0,5,10,15,20,25,30].map(v=>`<option value="${v}" ${(+gp[k]||0)===v?"selected":""}>${v ? "−"+v+" %" : "Sin boost"}</option>`).join("")}</select></label>`;
-  return `<div class="boosts"><span class="acc-label">Pase de oro</span>${sel("b","Construcción")}${sel("l","Investigación")}</div>`;
+function boostHtml(acc, vil){
+  const a=esc(acc._id), cur=k=>gpFor(acc, k);
+  const sel=(k,label)=>`<label class="boost" for="gp${k}-${a}">${img(k==="b"||k==="bb"?"mi_build":"mi_spell",0,"bi")}<span>${label}</span>
+    <select id="gp${k}-${a}" data-boost="${k}" data-acc="${a}">${[0,5,10,15,20,25,30].map(v=>`<option value="${v}" ${cur(k)===v?"selected":""}>${v ? "−"+v+" %" : "Sin boost"}</option>`).join("")}</select></label>`;
+  return vil==="bb" ? `<div class="boosts"><span class="acc-label">Pase de oro</span>${sel("bb","Construcción")}${sel("bl","Lab. estelar")}</div>`
+    : `<div class="boosts"><span class="acc-label">Pase de oro</span>${sel("b","Construcción")}${sel("l","Investigación")}</div>`;
 }
 function renderAcc(acc, now){
   const vil=S.vil;
@@ -1330,7 +1336,7 @@ function renderAcc(acc, now){
       <button aria-pressed="${vil==="h"}" data-act="vil" data-v="h">${img("big_"+ID_TH, acc.th||1)}Aldea principal</button>
       <button class="bb" aria-pressed="${vil==="bb"}" data-act="vil" data-v="bb">${img("big_"+ID_BH, acc.bh||1)}Base del constructor</button>
     </div>
-    ${vil==="h"?boostHtml(acc):""}
+    ${boostHtml(acc,vil)}
     ${workersHtml(acc,vil,now)}
     ${helpersHtml(acc,vil,now)}
   </div>
@@ -1789,7 +1795,7 @@ document.addEventListener("change",ev=>{
   if(t.dataset && t.dataset.boost){
     const acc=accounts().find(a=>a._id===t.dataset.acc); if(!acc) return;
     saveAcc({...acc, gp:{...(acc.gp||{}), [t.dataset.boost]:+t.value}});
-    toast("Tiempos recalculados con "+(+t.value)+" % menos de "+(t.dataset.boost==="b"?"construcción":"investigación")); return;
+    toast("Tiempos recalculados con "+(+t.value)+" % menos de "+(t.dataset.boost==="b"||t.dataset.boost==="bb"?"construcción":"investigación")); return;
   }
   if(t.dataset && t.dataset.hlvl){
     const acc=accounts().find(a=>a._id===t.dataset.acc); if(!acc) return;
