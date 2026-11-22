@@ -82,6 +82,7 @@ h1{font-size:26px;line-height:1.1} h2{font-size:20px} h3{font-size:15px}
 .hp{display:flex;align-items:center;gap:8px;background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:5px 11px 5px 5px;font-size:13px}
 .hp img{width:30px;height:30px;object-fit:contain}
 .hp b{display:block;font-size:13px}
+.hp select.hlvl{display:block;font:inherit;font-size:12px;padding:1px 4px;margin:2px 0;border-radius:6px;border:1px solid var(--line);background:var(--card,transparent);color:inherit}
 .hp.ready{background:var(--ok-soft);border-color:transparent}
 /* mejoras en curso */
 .list{display:flex;flex-direction:column;gap:10px}
@@ -346,6 +347,9 @@ const WORKER = {b:"Constructores", l:"Laboratorio", p:"Casa de mascotas", bb:"Co
 const WORKER_SHORT = {b:"Constructor", l:"Laboratorio", p:"Mascotas", bb:"Constructor (BC)", bl:"Lab. estelar"};
 const RES = {"Gold":"Oro","Elixir":"Elixir","Dark Elixir":"Elixir oscuro","Builder Gold":"Oro (BC)","Builder Elixir":"Elixir (BC)"};
 const HELPERS = {93000000:"Aprendiz", 93000001:"Ayudante de laboratorio", 93000002:"Alquimista", 93000003:"Prospector"};
+/* Ayuntamiento que pide cada nivel de los ayudantes (nivel 1, 2, 3…) */
+const HELPER_REQ = {93000000:[10,10,11,11,12,12,13,14], 93000001:[9,10,10,11,12,12,13,13,14,14,15,16], 93000002:[11,12,13,14,15,16,17]};
+function helperMax(id, th){ return (HELPER_REQ[id]||[]).filter(r=>r<=(th||0)).length; }
 const SECTIONS = ["buildings","traps","units","spells","siege_machines","heroes","guardians","pets","buildings2","traps2","units2","heroes2"];
 const ID_SMITH = 1000070, ID_WALL = 1000010, ID_WALL2 = 1000033;
 /* Texto del salto de nivel: los niveles por encima del máximo son supercargas */
@@ -574,7 +578,7 @@ function applyBoost(acc, key, now, opts={}){
     return {...u, end:now+nl};
   });
   let helpers=acc.helpers, clock=acc.clock;
-  if(B.helper && helpers && helpers[B.helper]) helpers={...helpers, [B.helper]:{...helpers[B.helper], end:now+23*3600000}};
+  if(B.helper){ const old=(helpers||{})[B.helper]||{}; helpers={...(helpers||{}), [B.helper]:{...old, lvl:opts.lvl||old.lvl||1, end:now+23*3600000}}; }
   // los boosts generales siguen activos un rato: lo que empieces mientras tanto también se acelera
   let act=(acc.act||[]).filter(a=>a.to>now);
   if(!B.one) act=[...act.filter(a=>a.k!==key), {k:key, ws:B.ws, speed, from:now, to:now+durMs}];
@@ -908,15 +912,20 @@ function workersHtml(acc, vil, now){
 }
 function helpersHtml(acc, vil, now){
   const out=[];
-  if(vil==="h") for(const [id,h] of Object.entries(acc.helpers||{})){
-    const ready=h.end<=now;
-    out.push(`<div class="hp ${ready?"ready":""}">${img("h_"+id,0)}<div><b>${esc(HELPERS[id])}</b>${ready?"Disponible":`<span class="num" data-end="${h.end}" data-plain="1">${fmtCountdown(h.end-now)}</span>`}</div></div>`);
+  if(vil==="h"){
+    const hs=acc.helpers||{};
+    const ids=Object.keys(HELPERS).filter(id=>hs[id] || helperMax(id,acc.th)>0);
+    for(const id of ids){
+      const h=hs[id]||{lvl:0,end:0}, ready=!(h.end>now), max=Math.max(helperMax(id,acc.th), h.lvl||0);
+      const lvl=HELPER_REQ[id]?`<select class="hlvl" data-hlvl="${id}" data-acc="${esc(acc._id)}" aria-label="Nivel de ${esc(HELPERS[id])}">${h.lvl?"":`<option value="0" selected>¿Nivel?</option>`}${Array.from({length:max},(_,i)=>`<option value="${i+1}" ${i+1===h.lvl?"selected":""}>Nivel ${i+1}</option>`).join("")}</select>`:"";
+      out.push(`<div class="hp ${ready?"ready":""}">${img("h_"+id,0)}<div><b>${esc(HELPERS[id])}</b>${lvl}${ready?"Disponible":`<span class="num" data-end="${h.end}" data-plain="1">${fmtCountdown(h.end-now)}</span>`}</div></div>`);
+    }
   }
   if(vil==="bb" && (acc.clock || maxLvl(acc.inv||{},1000039))){
     const ready=!(acc.clock>now);   // sin dato de recarga (cuentas importadas antes de esta función) = disponible
     out.push(`<div class="hp ${ready?"ready":""}">${img("clock",0)}<div><b>Torre del reloj</b>${ready?`Disponible · ${clockMinutes(acc)} min`:`<span class="num" data-end="${acc.clock}" data-plain="1">${fmtCountdown(acc.clock-now)}</span>`}</div></div>`);
   }
-  return out.length?`<div><div class="acc-label" style="margin-bottom:6px">${vil==="bb"?"Torre del reloj":"Ayudantes · según la última importación"}</div><div class="helpers">${out.join("")}</div></div>`:"";
+  return out.length?`<div><div class="acc-label" style="margin-bottom:6px">${vil==="bb"?"Torre del reloj":"Ayudantes · toca el nivel para cambiarlo"}</div><div class="helpers">${out.join("")}</div></div>`:"";
 }
 function upRow(acc, up, now, showAcc){
   const c=CAT[up.id]||{n:"Desconocido"};
@@ -1491,11 +1500,12 @@ document.addEventListener("click",ev=>{
     const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
     const k=el.dataset.k, B=BOOSTS[k], now=Date.now();
     const ups=(acc.ups||[]).filter(u=>u.end>now&&B.ws.includes(u.w)).sort((a,b)=>a.end-b.end);
-    const hl=B.helper?(((acc.helpers||{})[B.helper]||{}).lvl||1):0;
+    const hl=B.helper?(((acc.helpers||{})[B.helper]||{}).lvl||0):0;
+    const hmax=B.helper?Math.max(helperMax(B.helper,acc.th),hl,1):0;
     document.getElementById("modal-root").innerHTML=`<div class="modal-back" data-act="close-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="b-title">
       <div class="mhead"><div class="tile">${img(B.icon,0)}</div><div><h2 id="b-title">${esc(B.name)}</h2><div class="muted small">${esc(B.desc)}</div></div></div>
       ${B.one?`<label for="b-target">Mejora<select id="b-target">${ups.map(u=>`<option value="${esc(u.u)}">${esc(CAT[u.id].n)} ${u.from}→${u.to} · quedan ${fmtDur(u.end-now)}</option>`).join("")}</select></label>
-        <label for="b-lvl">Nivel del ${B.helper===93000000?"aprendiz":"ayudante"} (ahorra tantas horas como su nivel)<select id="b-lvl">${[1,2,3,4,5,6,7,8].map(l=>`<option value="${l}" ${l===hl?"selected":""}>Nivel ${l}</option>`).join("")}</select></label>`:""}
+        ${hl?`<input type="hidden" id="b-lvl" value="${hl}"><div class="small">${B.helper===93000000?"Aprendiz":"Ayudante"} a <b>nivel ${hl}</b>: ahorra ${hl} h por hora (cámbialo en Ayudantes si no es así)</div>`:`<label for="b-lvl">Nivel del ${B.helper===93000000?"aprendiz":"ayudante"} (ahorra tantas horas como su nivel; se guarda para la próxima)<select id="b-lvl">${Array.from({length:hmax},(_,i)=>i+1).map(l=>`<option value="${l}" ${l===hmax?"selected":""}>Nivel ${l}</option>`).join("")}</select></label>`}`:""}
       ${B.clock?`<label for="b-min">Minutos de impulso que quedan (si ya lo activaste hace un rato en el juego, pon los que le quedan)<input id="b-min" type="number" min="1" max="120" value="${clockMinutes(acc)}"></label>
         <label for="b-cd">Se puede volver a usar dentro de (horas)<input id="b-cd" type="number" min="0.5" max="48" step="0.5" value="${acc.clockCdH||7}"></label>`:""}
       <div id="b-prev" class="list"></div>
@@ -1635,6 +1645,12 @@ document.addEventListener("change",ev=>{
     const acc=accounts().find(a=>a._id===t.dataset.acc); if(!acc) return;
     saveAcc({...acc, gp:{...(acc.gp||{}), [t.dataset.boost]:+t.value}});
     toast("Tiempos recalculados con "+(+t.value)+" % menos de "+(t.dataset.boost==="b"?"construcción":"investigación")); return;
+  }
+  if(t.dataset && t.dataset.hlvl){
+    const acc=accounts().find(a=>a._id===t.dataset.acc); if(!acc) return;
+    const id=t.dataset.hlvl, old=(acc.helpers||{})[id]||{end:0};
+    saveAcc({...acc, helpers:{...(acc.helpers||{}), [id]:{...old, lvl:+t.value}}});
+    toast(HELPERS[id]+" a nivel "+t.value); return;
   }
   if(t.id==="cat-new"){ S.catNew=t.checked; S.catG=""; render(); }
   if(t.id==="cat-all"){ S.catAll=t.checked; render(); }
