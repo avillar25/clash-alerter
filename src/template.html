@@ -420,6 +420,28 @@ function canUpgrade(id, from){ return catDur(id,from)>0; }
 function reqLevel(id, from){ const c=CAT[id]; return c && from<c.r.length ? c.r[from] : 0; }
 function gpFor(acc,w){ if(w==="bb"||w==="bl") return 0; const g=acc.gp||{}; return isLab(w) ? (+g.l||0) : (+g.b||0); }
 function effDur(acc,id,from){ const base=catDur(id,from); return Math.round(base*(1-gpFor(acc,CAT[id].w)/100)/1000)*1000; }
+const ID_HEROHALL = 1000071;
+/* Héroes: los desbloquea el Consejo heroico y cada nivel pide un nivel de Consejo */
+function heroHallLevel(acc){ return maxLvl(acc.inv||{}, ID_HEROHALL); }
+function heroHallReq(id, from){ const c=CAT[id]; return c&&c.hh&&from<c.hh.length ? c.hh[from] : 0; }
+function lockInfo(acc, vil, id, from){
+  const th=reqLevel(id,from), hh=heroHallReq(id,from);
+  if(th>hallLevel(acc,vil)) return "pide nivel "+th;
+  if(hh>heroHallLevel(acc)) return "pide Consejo heroico "+hh;
+  return "";
+}
+/* Al subir el Consejo heroico aparece el héroe nuevo a nivel 1, como en el juego */
+function unlockHeroes(acc){
+  const inv=acc.inv||{}, L=maxLvl(inv, ID_HEROHALL); let ch=false;
+  if(!L) return false;
+  for(const [id,c] of Object.entries(CAT)){
+    if(!c.hu||c.hu>L||inv[id]) continue;
+    if((acc.ups||[]).some(u=>u.id===+id)) continue;
+    addInv(inv,id,1,1); ch=true;
+  }
+  if(ch) acc.inv=inv;
+  return ch;
+}
 function hallLevel(acc, vil){ return vil==="bb" ? (acc.bh||0) : (acc.th||0); }
 function maxAt(id, lim, withSc){ const c=CAT[id]; const top=(c.sc&&!withSc)?c.sc:c.d.length; let m=0; for(let L=1; L<=top; L++){ if((c.r[L-1]||0)<=lim) m=L; else break; } return m; }
 function addInv(inv,id,lvl,n){ const k=String(id), l=String(lvl); inv[k]=inv[k]||{}; inv[k][l]=(inv[k][l]||0)+n; if(inv[k][l]<=0) delete inv[k][l]; if(!Object.keys(inv[k]).length) delete inv[k]; }
@@ -731,7 +753,7 @@ function save(id, data){
   });
   writeChains[id]=p; return p;
 }
-function saveAcc(acc){ const {_id, _justDone, ...rest}=acc; const raw=S.docs[_id]; if(raw&&raw.cap&&rest.cap===acc.cap) rest.cap={...rest.cap, b:raw.cap.b, l:raw.cap.l, p:raw.cap.p}; const p=save(_id, rest); syncIndex(); return p; }
+function saveAcc(acc){ unlockHeroes(acc); const {_id, _justDone, ...rest}=acc; const raw=S.docs[_id]; if(raw&&raw.cap&&rest.cap===acc.cap) rest.cap={...rest.cap, b:raw.cap.b, l:raw.cap.l, p:raw.cap.p}; const p=save(_id, rest); syncIndex(); return p; }
 /* Lista de cuentas para las tareas programadas de avisos */
 function syncIndex(){
   const ids=Object.keys(S.docs).filter(k=>k.startsWith("acc_")&&S.docs[k]).sort();
@@ -856,7 +878,9 @@ function updateBanner(){
 }
 function checkDone(){
   const now=Date.now();
-  for(const acc of accounts()){ const n=applyDone(acc,now); if(n){ const names=n._justDone.map(d=>CAT[d.id]?.n).filter(Boolean); saveAcc(n); toast(acc.name+": "+names.join(", ")+(names.length>1?" terminadas":" terminada")); } }
+  for(const acc of accounts()){ const n=applyDone(acc,now);
+    if(!n){ const c={...acc, inv:JSON.parse(JSON.stringify(acc.inv||{}))}; if(unlockHeroes(c)){ saveAcc(c); toast(acc.name+": héroe nuevo desbloqueado"); } continue; }
+    if(n){ const names=n._justDone.map(d=>CAT[d.id]?.n).filter(Boolean); saveAcc(n); toast(acc.name+": "+names.join(", ")+(names.length>1?" terminadas":" terminada")); } }
 }
 
 /* ---------- interfaz ---------- */
@@ -1010,14 +1034,14 @@ function catalogItems(acc, vil){
     for(const [id,c] of Object.entries(CAT)){
       if(vilOf(+id)!==vil||!(c.w==="b"||c.w==="bb")||c.g.endsWith("_her")) continue;
       if(!canUpgrade(+id,0)) continue;
-      out.push({id:+id,from:0,cnt:0,lock:reqLevel(+id,0)>lim});
+      out.push({id:+id,from:0,cnt:0,lock:!!lockInfo(acc,vil,+id,0)});
     }
   } else {
     for(const [id,lv] of Object.entries(inv)){
       const c=CAT[id]; if(!c||vilOf(+id)!==vil) continue;
       for(const [l,cnt] of Object.entries(lv)){
         const from=+l; if(!canUpgrade(+id,from)) continue;
-        out.push({id:+id,from,cnt,lock:reqLevel(+id,from)>lim});
+        out.push({id:+id,from,cnt,lock:!!lockInfo(acc,vil,+id,from)});
       }
     }
     // edificios que tu ayuntamiento permite y aún no has construido (p. ej. la segunda torre de hechizos)
@@ -1030,7 +1054,7 @@ function catalogItems(acc, vil){
     for(const u of acc.ups||[]){
       if(vilOf(u.id)!==vil||!canUpgrade(u.id,u.to)) continue;
       if(out.some(x=>x.id===u.id&&x.from===u.to)) continue;
-      out.push({id:u.id,from:u.to,cnt:1,lock:reqLevel(u.id,u.to)>lim,busy:true});
+      out.push({id:u.id,from:u.to,cnt:1,lock:!!lockInfo(acc,vil,u.id,u.to),busy:true});
     }
   }
   const q=S.catQ.trim().toLowerCase();
@@ -1065,7 +1089,7 @@ function catalogHtml(acc, vil){
           <div class="sub">${S.catNew?"Construir nuevo":[have?`${have} disponible${have===1?"":"s"}`:"",busyN?`${busyN} mejorando`:""].filter(Boolean).join(" · ")}</div></div></div>
         <div class="ilevels">${rows.map(x=>{ const d=effDur(acc,x.id,x.from), cost=catCost(x.id,x.from);
           return `<div class="ilvl ${x.lock?"locked":""}">
-            <div class="lvtxt"><span class="lvl ${CAT[x.id].sc&&x.from>=CAT[x.id].sc?"sc":""}">${x.from===0?"Construir nuevo":esc(stepTxt(x.id,x.from))}</span>${x.isNew?`<span class="small muted">${x.cnt>1?`te faltan ${x.cnt}`:"te falta 1"}</span>`:(x.cnt>1?`<b class="cnt">×${x.cnt}</b>`:"")}${x.busy?`<span class="small muted">cuando acabe la actual</span>`:""}${x.lock?`<span class="small muted">pide nivel ${reqLevel(x.id,x.from)}</span>`:""}</div>
+            <div class="lvtxt"><span class="lvl ${CAT[x.id].sc&&x.from>=CAT[x.id].sc?"sc":""}">${x.from===0?"Construir nuevo":esc(stepTxt(x.id,x.from))}</span>${x.isNew?`<span class="small muted">${x.cnt>1?`te faltan ${x.cnt}`:"te falta 1"}</span>`:(x.cnt>1?`<b class="cnt">×${x.cnt}</b>`:"")}${x.busy?`<span class="small muted">cuando acabe la actual</span>`:""}${x.lock?`<span class="small muted">${esc(lockInfo(acc,vil,x.id,x.from))}</span>`:""}</div>
             <div class="lvinfo"><span class="t">${fmtDur(d)}</span>${cost?`<span class="cost">${resIcon(c.res)}${fmtNum(cost)}</span>`:""}</div>
             <div class="gobtns">${!x.busy&&!x.isNew&&x.from>0&&!x.lock&&hammerFor(x.id)?`<button class="btn icon ham" title="${esc(FINISH[hammerFor(x.id)][0])}" aria-label="${esc(FINISH[hammerFor(x.id)][0])}" data-act="hammer" data-acc="${esc(acc._id)}" data-id="${x.id}" data-from="${x.from}">${img(FINISH[hammerFor(x.id)][1],0,"bi")}</button>`:""}<button class="btn" data-act="padd" data-acc="${esc(acc._id)}" data-id="${x.id}" data-from="${x.from}" data-cnt="${x.cnt}">+ Plan</button>${x.busy?"":`<button class="btn" data-act="start" data-acc="${esc(acc._id)}" data-id="${x.id}" data-from="${x.from}">Empezar</button>`}</div>
           </div>`; }).join("")}</div>
@@ -1602,7 +1626,7 @@ document.addEventListener("change",ev=>{
 });
 document.addEventListener("keydown",ev=>{ if(ev.key==="Escape") closeModal(); });
 }
-if(typeof module!=="undefined"){ module.exports={parseExport,mergeImport,applyDone,startUpgrade,cancelUpgrade,ntfyLink,catDur,effDur,CAT,busy,goblinUp,hammerFor,hammerUpgrade,magicAdvice,stepTxt,eqMax,maxAt,applyBoost,boostedLeft,finishUpgrade,finishOptions,progress,nextFree,maxAt,simulatePlan,sleepAdjust,planFrom,takeIdle,idleLink}; }
+if(typeof module!=="undefined"){ module.exports={parseExport,mergeImport,applyDone,startUpgrade,cancelUpgrade,ntfyLink,catDur,effDur,CAT,busy,goblinUp,hammerFor,hammerUpgrade,magicAdvice,stepTxt,eqMax,maxAt,applyBoost,boostedLeft,finishUpgrade,finishOptions,progress,nextFree,maxAt,simulatePlan,sleepAdjust,planFrom,takeIdle,idleLink,unlockHeroes,lockInfo,catalogItems}; }
 else {
   fetch("images.json").then(r=>r.ok?r.json():null).then(j=>{ if(j){ IMG=j; render(); } }).catch(()=>{});
   initStore();
