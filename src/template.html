@@ -645,25 +645,40 @@ function nextFree(acc, w, now){
   return {free:0, at:ends[0]};
 }
 /* Lo que falta para maximizar el ayuntamiento actual (o el taller) */
+/* Progreso del nivel de ayuntamiento actual, como Clash Ninja: solo cuenta lo que este nivel
+   añade (desde el máximo del ayuntamiento anterior hasta el de este), pesado por tiempo de mejora.
+   Incluye lo que aún no has construido. */
 function progress(acc, vil, now){
   const lim=hallLevel(acc,vil); let cur=0, max=0, items=0;
   const time={b:0,l:0,p:0,bb:0,bl:0}, chain={b:0,l:0,p:0,bb:0,bl:0}, cost={}, byG={};
+  const hall=vil==="bb"?ID_BH:ID_TH, allow=(MAXC[hall]||{})[String(lim)]||{}, prevAllow=(MAXC[hall]||{})[String(lim-1)]||{};
+  const have={}, seenBase={};
+  const w8=(id,from,to)=>{ let s=0; for(let x=from;x<to;x++) s+=Math.max(catDur(id,x),60000); return s; };   // lo instantáneo cuenta un poco
   const take=(id, lvl, startFrom, n, extra=0)=>{
     const c=CAT[id]; if(!c||vilOf(id)!==vil||c.g.endsWith("_wal")) return;
     const m=maxAt(id,lim); if(m<=0) return;
-    cur+=Math.min(lvl,m)*n; max+=m*n;
-    const G=(byG[c.g]=byG[c.g]||{cur:0,max:0}); G.cur+=Math.min(lvl,m)*n; G.max+=m*n;
+    have[id]=(have[id]||0)+n;
+    // instancias que ya existían con el ayuntamiento anterior empiezan en su máximo de entonces; las nuevas, en 0
+    const prevN=(c.w==="l"||c.w==="p"||c.w==="bl"||c.g.endsWith("_her"))?Infinity:(+prevAllow[id]||0);
+    for(let k=0;k<n;k++){
+      const idx=seenBase[id]=(seenBase[id]||0)+1;
+      const base=idx<=prevN?Math.min(maxAt(id,lim-1),m):0;
+      if(m>base){ const tot=w8(id,base,m), dn=w8(id,base,Math.max(base,Math.min(lvl,m)));
+        cur+=dn; max+=tot; const G=(byG[c.g]=byG[c.g]||{cur:0,max:0}); G.cur+=dn; G.max+=tot; }
+    }
     let ch=extra;
     for(let x=startFrom; x<m; x++){ const dd=effDur(acc,id,x); ch+=dd; time[c.w]+=dd*n; const k=c.res||"?"; cost[k]=(cost[k]||0)+catCost(id,x)*n; }
     chain[c.w]=Math.max(chain[c.w], ch);   // un mismo edificio no se puede mejorar en paralelo
     if(startFrom<m) items+=n;
   };
-  for(const [id,lv] of Object.entries(acc.inv||{})) for(const [l,cnt] of Object.entries(lv)) take(+id,+l,+l,cnt);
+  for(const [id,lv] of Object.entries(acc.inv||{})) for(const [l,cnt] of Object.entries(lv).sort((a,b)=>b[0]-a[0])) take(+id,+l,+l,cnt);
   for(const u of acc.ups||[]) if(vilOf(u.id)===vil){ const left=Math.max(0,u.end-now); take(u.id,u.from,u.to,1,left); const c=CAT[u.id]; if(c&&!c.g.endsWith("_wal")) time[u.w]+=left; }
-  // 7: cuándo lo tendrías todo al máximo sin dejar a nadie parado (ni contar muros)
+  // lo que tu ayuntamiento permite construir y aún no tienes
+  for(const [id,n] of Object.entries(allow)){ const c=CAT[id]; if(!c||c.g.endsWith("_wal")||c.w!==(vil==="bb"?"bb":"b")) continue;
+    const miss=(+n)-(have[id]||0); if(miss>0) take(+id,0,0,miss); }
   const est={}; let doneAt=now, slow=null;
   for(const w of VIL[vil].workers){ const cap=(acc.cap||{})[w]||0; if(!cap||!time[w]) continue; est[w]=Math.max(time[w]/cap, chain[w]); if(now+est[w]>doneAt){ doneAt=now+est[w]; slow=w; } }
-  return {pct:max?cur/max:0, time, cost, items, lim, byG, est, doneAt, slow};
+  return {pct:max?cur/max:1, time, cost, items, lim, byG, est, doneAt, slow};
 }
 /* Horario de sueño: no se empieza nada entre esas horas */
 function sleepAdjust(ts, sl){
@@ -1090,7 +1105,7 @@ function progressHtml(acc, vil, now){
   const ws=VIL[vil].workers.filter(w=>p.time[w]>0);
   const costs=Object.entries(p.cost).filter(([,v])=>v>0);
   return `<div class="panel">
-    <div class="panel-head"><h2>Progreso de ${esc(VIL[vil].hall.toLowerCase())} ${p.lim}</h2><span class="muted small">Sin contar muros</span></div>
+    <div class="panel-head"><h2>Progreso de ${esc(VIL[vil].hall.toLowerCase())} ${p.lim}</h2><span class="muted small">Lo que añade este nivel · sin muros</span></div>
     <div class="prog">${ringSvg(p.pct, vil==="bb"?"var(--night)":"var(--gold)")}
       <div class="small">${p.items?`Te quedan <b>${p.items}</b> mejoras para tenerlo todo al máximo en ${esc(VIL[vil].hall.toLowerCase())} ${p.lim}.`:"Todo al máximo para tu nivel. Toca subir el "+esc(VIL[vil].hall.toLowerCase())+"."}</div>
     </div>
@@ -1246,9 +1261,17 @@ function wallsHtml(acc, vil){
   const total=levels.reduce((s,[,n])=>s+n,0); if(!total) return "";
   const done=levels.filter(([l])=>l>=m).reduce((s,[,n])=>s+n,0);
   let gold=0; levels.forEach(([l,n])=>{ for(let x=l; x<m; x++) gold+=catCost(id,x)*n; });
-  const sum=levels.reduce((s,[l,n])=>s+Math.min(l,m)*n,0), pc=total?sum/(total*m):1;
+  // como Clash Ninja: solo lo que añade este ayuntamiento, por coste, y los muros que aún no has puesto
+  const hall=vil==="bb"?ID_BH:ID_TH, allowN=+(((MAXC[hall]||{})[String(lim)]||{})[String(id)]||total), prevN=+(((MAXC[hall]||{})[String(lim-1)]||{})[String(id)]||0);
+  let pm=0; for(let L=1; L<=c.c.length; L++){ if((c.r[L-1]||0)<=lim-1) pm=L; else break; }
+  const cs=(a,b)=>{ let s=0; for(let x=a;x<b;x++) s+=catCost(id,x)||1; return s; };
+  const upW=(acc.ups||[]).filter(u=>u.id===id).map(u=>[u.from,1]);
+  const all=[...levels,...upW].sort((a,b)=>b[0]-a[0]); let idx=0, dn=0, tot=0;
+  for(const [l,n] of all) for(let k=0;k<n;k++){ idx++; const base=idx<=prevN?pm:0; tot+=cs(base,m); dn+=cs(base,Math.max(base,Math.min(l,m))); }
+  for(let k=idx;k<allowN;k++){ tot+=cs(0,m); }
+  const pc=tot?dn/tot:1;
   return `<details class="panel"><summary>Muros · ${Math.floor(pc*100)}%</summary>
-    <div class="small">${done} de ${total} muros al máximo de tu nivel (nivel ${m}).${gold?` Te faltan <span class="cost">${resIcon(c.res||"Gold")}${fmtNum(gold)}</span>${vil==="h"?" en oro o elixir":""}.`:""}</div>
+    <div class="small">${done} de ${Math.max(total,allowN)} muros al máximo de tu nivel (nivel ${m}).${gold?` Te faltan <span class="cost">${resIcon(c.res||"Gold")}${fmtNum(gold)}</span>${vil==="h"?" en oro o elixir":""}.`:""}</div>
     <div class="walls">${levels.map(([l,n])=>`<div class="wall ${l>=m?"max":""}"><div class="tile sm">${img(id,l)}</div>
       <div><div class="nm">Nivel ${l} <b class="cnt">×${n}</b></div><div class="sub">${l<m?`Siguiente: <span class="cost">${resIcon(c.res||"Gold")}${fmtNum(catCost(id,l))}</span> cada uno`:"Al máximo"}</div></div>
       ${l<m?`<div class="wup"><input type="number" min="1" max="${n}" value="1" id="wn-${l}-${esc(acc._id)}" aria-label="Cuántos muros"><button class="btn" data-act="wallup" data-acc="${esc(acc._id)}" data-id="${id}" data-l="${l}">Subir</button></div>`:""}
