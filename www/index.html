@@ -795,7 +795,9 @@ const S = {docs:{}, ready:false, mode:"loading", note:"", view:"all", vil:"h", u
 let col=null; const writeChains={};
 /* La casa de mascotas solo cuenta si la cuenta la tiene construida (ayuntamiento 14+) */
 function hasPetHouse(a){ return !!((a.inv||{})["1000068"]) || (a.ups||[]).some(u=>u.id===1000068); }
-function accounts(){ return Object.entries(S.docs).filter(([k,v])=>k.startsWith("acc_")&&v).map(([k,v])=>({...v,_id:k,cap:{...(v.cap||{}), p:hasPetHouse(v)?1:0}})).sort((a,b)=>(b.th||0)-(a.th||0) || (b.bh||0)-(a.bh||0) || (a.order||0)-(b.order||0)); }
+/* Constructores de la base nocturna según lo construido: Maestro + O.T.T.O. + B.O.T.O. */
+function bbBuilders(v){ const inv=v.inv||{}; const has=id=>inv[id]||(v.ups||[]).some(u=>u.id===id&&u.from>0); return (v.bh?1:0)+(has(ID_OTTO)?1:0)+(has(ID_BOTO)?1:0); }
+function accounts(){ return Object.entries(S.docs).filter(([k,v])=>k.startsWith("acc_")&&v).map(([k,v])=>({...v,_id:k,cap:{...(v.cap||{}), p:hasPetHouse(v)?1:0, ...(v.capManual?{}:{bb:Math.max((v.cap||{}).bb||0, bbBuilders(v))})}})).sort((a,b)=>(b.th||0)-(a.th||0) || (b.bh||0)-(a.bh||0) || (a.order||0)-(b.order||0)); }
 function settings(){ return S.docs.settings || {}; }
 function localLoad(){ try{ return JSON.parse(localStorage.getItem("coc-avisos")||"{}"); }catch(e){ return {}; } }
 function localSave(){ try{ localStorage.setItem("coc-avisos", JSON.stringify(S.docs)); }catch(e){} }
