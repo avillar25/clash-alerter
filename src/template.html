@@ -467,8 +467,6 @@ function maxTxt(acc, vil, id){
   let s=`Máx. nivel ${m.now}`;
   if(m.byTh>m.now) s+=` (${m.byTh} al subir el Consejo heroico)`;
   if(m.sc) s+=` + ${m.sc} supercarga${m.sc>1?"s":""}`;
-  if(m.next) s+=` · ${m.next} en ${H} ${lim+1}`;
-  else if(m.byTh>=m.all) s+=" · nivel máximo del juego";
   return s;
 }
 function lockInfo(acc, vil, id, from){
