@@ -102,6 +102,11 @@ details.sub{border:1px dashed var(--line);border-radius:10px;padding:4px 10px;ma
 .evrow{display:flex;gap:10px;align-items:center;padding:6px 0}
 .evrow .ei{font-size:22px}
 .sub.maxl{color:var(--accent,var(--gold));font-weight:600}
+.wsec{margin-top:10px}
+.wsec:first-child{margin-top:0}
+.wsech{display:flex;align-items:center;gap:8px;font-weight:700;margin:4px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.wsech img{width:26px;height:26px;object-fit:contain}
+.wsech b{margin-left:auto;font-size:13px;color:var(--muted)}
 .hp.ready{background:var(--ok-soft);border-color:transparent}
 /* mejoras en curso */
 .list{display:flex;flex-direction:column;gap:10px}
@@ -1118,19 +1123,25 @@ function upsTabsHtml(key, vil, pairs, now, showAcc, accForCap){
   const anyPet=accForCap?hasPetHouse(accForCap):accounts().some(hasPetHouse);
   const tabs=WTABS[vil].filter(([w])=>w!=="p"||anyPet||pairs.some(([a,u])=>u.w==="p"));
   const cnt=w=>pairs.filter(([a,u])=>u.w===w).length;
-  let cur=S.upTab[key];
-  if(!cur||!tabs.some(x=>x[0]===cur)){ const f=tabs.find(x=>cnt(x[0])); cur=f?f[0]:tabs[0][0]; }
-  const list=pairs.filter(([a,u])=>u.w===cur).sort((x,y)=>x[1].end-y[1].end);
+  let cur0=S.upTab[key];
+  if(!cur0||!tabs.some(x=>x[0]===cur0)){ const f=tabs.find(x=>cnt(x[0])); cur0=f?f[0]:tabs[0][0]; }
   const lvlImg=id=>{ const a=accForCap||null; const l=a?Math.max(1,(()=>{const o=(a.inv||{})[String(id)];return o?Math.max(...Object.keys(o).map(Number)):1;})()):1; return img(id,l); };
+  const section=(cur)=>{
+  const list=pairs.filter(([a,u])=>u.w===cur).sort((x,y)=>x[1].end-y[1].end);
   let emptyMsg="Nada en marcha.";
   if(accForCap){ const cap=(accForCap.cap||{})[cur]||0;
     if(!cap) emptyMsg = cur==="p" ? "Aún no tienes casa de mascotas (se desbloquea en el ayuntamiento 14)." : "No tienes este trabajador.";
     else emptyMsg = cur==="b"||cur==="bb" ? "Tus constructores están libres. Elige abajo lo que acabas de empezar." : "Libre. Elige abajo la investigación que acabas de empezar."; }
   const actives = accForCap ? (accForCap.act||[]).filter(a=>a.to>now && a.ws.includes(cur)) : [];
   const boostBar = accForCap && (pairs.some(([a,u])=>u.w===cur) || actives.length) ? `<div class="bbar">${actives.map(a=>`<span class="actb">${img(BOOSTS[a.k].icon,0,"bi")}${esc(BOOSTS[a.k].name)} activo · <span class="num" data-end="${a.to}" data-plain="1">${fmtCountdown(a.to-now)}</span></span>`).join("")}${(BOOSTS_BY_W[cur]||[]).map(k=>`<button class="btn bst" data-act="boost" data-k="${k}" data-acc="${esc(accForCap._id)}" data-w="${cur}">${img(BOOSTS[k].icon,0,"bi")}${esc(BOOSTS[k].name)}</button>`).join("")}</div>` : "";
-  return `<div class="wtabs" role="tablist">${tabs.map(([w,n,id])=>`<button class="wtab" role="tab" aria-selected="${w===cur}" data-act="uptab" data-k="${esc(key)}" data-w="${w}">${lvlImg(id)}<span>${esc(n)}</span><b>${cnt(w)}</b></button>`).join("")}</div>
-    ${boostBar}
-    ${list.length?`<div class="list">${list.map(([a,u])=>upRow(a,u,now,showAcc)).join("")}</div>`:`<div class="empty">${esc(emptyMsg)}</div>`}`;
+  return {boostBar, list, emptyMsg};
+  };
+  const content=(cur)=>{ const s=section(cur); return `${s.boostBar}
+    ${s.list.length?`<div class="list">${s.list.map(([a,u])=>upRow(a,u,now,showAcc)).join("")}</div>`:`<div class="empty">${esc(s.emptyMsg)}</div>`}`; };
+  // En una cuenta concreta: todo a la vista (constructores, laboratorio, mascotas), sin cambiar de pestaña
+  if(accForCap) return tabs.map(([w,n,id])=>`<div class="wsec"><div class="wsech">${lvlImg(id)}<span>${esc(n)}</span><b>${cnt(w)}${(accForCap.cap||{})[w]?"/"+(accForCap.cap[w]):""}</b></div>${content(w)}</div>`).join("");
+  return `<div class="wtabs" role="tablist">${tabs.map(([w,n,id])=>`<button class="wtab" role="tab" aria-selected="${w===cur0}" data-act="uptab" data-k="${esc(key)}" data-w="${w}">${lvlImg(id)}<span>${esc(n)}</span><b>${cnt(w)}</b></button>`).join("")}</div>
+    ${content(cur0)}`;
 }
 function ringSvg(p, col){
   const r=38, C=2*Math.PI*r, v=Math.max(0,Math.min(1,p));
@@ -1471,7 +1482,6 @@ function renderAll(now){
   };
   return `
   ${freeNowHtml(accs,now)}
-  <div class="panel"><div class="panel-head"><h2>Tus cuentas</h2><span class="muted small">Próximo trabajador libre</span></div><div class="accs">${accs.map(card).join("")}</div></div>
   ${sect("h")}
   ${sect("bb")}
   ${eventsHtml(now)}
