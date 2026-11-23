@@ -1138,8 +1138,9 @@ function upsTabsHtml(key, vil, pairs, now, showAcc, accForCap){
   };
   const content=(cur)=>{ const s=section(cur); return `${s.boostBar}
     ${s.list.length?`<div class="list">${s.list.map(([a,u])=>upRow(a,u,now,showAcc)).join("")}</div>`:`<div class="empty">${esc(s.emptyMsg)}</div>`}`; };
-  // En una cuenta concreta: todo a la vista (constructores, laboratorio, mascotas), sin cambiar de pestaña
-  if(accForCap) return tabs.map(([w,n,id])=>`<div class="wsec"><div class="wsech">${lvlImg(id)}<span>${esc(n)}</span><b>${cnt(w)}${(accForCap.cap||{})[w]?"/"+(accForCap.cap[w]):""}</b></div>${content(w)}</div>`).join("");
+  // En el Resumen: todo a la vista (constructores, laboratorio, mascotas), sin cambiar de pestaña
+  if(key.startsWith("all:")){ const capSum=w=>(accForCap?[accForCap]:accounts()).reduce((s,a)=>s+((a.cap||{})[w]||0),0);
+    return tabs.map(([w,n,id])=>`<div class="wsec"><div class="wsech">${lvlImg(id)}<span>${esc(n)}</span><b>${cnt(w)}${capSum(w)?"/"+capSum(w):""}</b></div>${content(w)}</div>`).join(""); }
   return `<div class="wtabs" role="tablist">${tabs.map(([w,n,id])=>`<button class="wtab" role="tab" aria-selected="${w===cur0}" data-act="uptab" data-k="${esc(key)}" data-w="${w}">${lvlImg(id)}<span>${esc(n)}</span><b>${cnt(w)}</b></button>`).join("")}</div>
     ${content(cur0)}`;
 }
