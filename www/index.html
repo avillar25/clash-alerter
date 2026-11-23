@@ -615,7 +615,7 @@ const BOOSTS = {
   bpot:{name:"Poción de constructor", icon:"mi_bpot", ws:["b"], speed:10, min:60, desc:"Constructores x10 durante 1 hora"},
   appr:{name:"Aprendiz", icon:"h_93000000", ws:["b"], helper:93000000, one:true, min:60, desc:"Una mejora más rápida durante 1 hora"},
   bite:{name:"Carne del constructor", icon:"mi_bite", ws:["b"], speed:2, min:60, desc:"Constructores x2 durante 1 hora (el aprendiz no se acelera)"},
-  soup:{name:"Sopa del conocimiento", icon:"mi_soup", ws:["l","p"], speed:4, min:60, desc:"Laboratorio y casa de mascotas x4 durante 1 hora"},
+  soup:{name:"Sopa del conocimiento", icon:"mi_soup", ws:["l","p"], speed:4, min:60, desc:"Laboratorio y casa de mascotas x4 durante 1 hora: avanzan 4 h y acaban 3 h antes"},
   rpot:{name:"Poción de investigación", icon:"mi_rpot", ws:["l"], speed:24, min:60, desc:"Laboratorio x24 durante 1 hora"},
   lass:{name:"Ayudante de laboratorio", icon:"h_93000001", ws:["l"], helper:93000001, one:true, min:60, desc:"La investigación más rápida durante 1 hora"},
   ppot:{name:"Poción de mascotas", icon:"mi_ppot", ws:["p"], speed:24, min:60, desc:"Casa de mascotas x24 durante 1 hora"},
@@ -628,6 +628,8 @@ function clockMinutes(acc){ const l=maxLvl(acc.inv||{},1000039); return l?12+2*l
 /* Tiempo que queda tras acelerar a speed x durante durMs */
 function boostedLeft(left, speed, durMs){ return left <= speed*durMs ? left/speed : left-(speed-1)*durMs; }
 /* Ayudante asignado hasta que acabe: cada día trabaja 1 h (a velocidad 1+nivel) y descansa 23 h */
+/* Tiempo de reloj que dura un impulso (para explicar "avanza 4 h en 1 h") */
+function boostWin(k, opts){ const B=BOOSTS[k]||{}; return ((opts&&opts.min)||B.min||(B.clock?20:60))*60000; }
 function helperUntilDone(left, speed){
   const H=3600000; let rem=left, el=0, n=0;
   while(rem>0){
@@ -1733,7 +1735,7 @@ document.addEventListener("click",ev=>{
     const prev=()=>{
       const opts={target:(document.getElementById("b-target")||{}).value, lvl:+((document.getElementById("b-lvl")||{}).value||0)||undefined, min:+((document.getElementById("b-min")||{}).value||0)||undefined, until:!!(document.getElementById("b-until")||{}).checked};
       const r=applyBoost(acc,k,Date.now(),opts);
-      document.getElementById("b-prev").innerHTML=r.changed.length?r.changed.map(c=>{ const u=acc.ups.find(x=>x.u===c.u); return `<div class="bprev"><div class="tile sm">${img(u.id,u.to)}</div><div><b>${esc(CAT[u.id].n)}</b><div class="small muted">${fmtDur(c.before)} → <b>${fmtDur(c.after)}</b> (−${fmtDur(c.before-c.after)})${c.windows?` · ${c.windows} día${c.windows>1?"s":""} de ayuda`:""}</div></div></div>`; }).join(""):`<div class="empty">No hay mejoras en curso a las que aplicarlo.</div>`;
+      document.getElementById("b-prev").innerHTML=r.changed.length?r.changed.map(c=>{ const u=acc.ups.find(x=>x.u===c.u); return `<div class="bprev"><div class="tile sm">${img(u.id,u.to)}</div><div><b>${esc(CAT[u.id].n)}</b><div class="small muted">${fmtDur(c.before)} → <b>${fmtDur(c.after)}</b> · acaba <b>${fmtDur(c.before-c.after)} antes</b>${c.windows?"":` (avanza ${fmtDur(Math.min(c.before,c.before-c.after+boostWin(k,opts)))} en ${fmtDur(Math.min(c.after,boostWin(k,opts)))})`}${c.windows?` · ${c.windows} día${c.windows>1?"s":""} de ayuda`:""}</div></div></div>`; }).join(""):`<div class="empty">No hay mejoras en curso a las que aplicarlo.</div>`;
     };
     prev(); document.querySelectorAll("#modal-root select,#modal-root input").forEach(i=>i.addEventListener("input",prev));
     return;
