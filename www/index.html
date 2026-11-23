@@ -617,6 +617,18 @@ const CLOCK_CD_H = 22;   // la torre del reloj gratis se recarga 22 h después d
 function clockMinutes(acc){ const l=maxLvl(acc.inv||{},1000039); return l?12+2*l:14; }
 /* Tiempo que queda tras acelerar a speed x durante durMs */
 function boostedLeft(left, speed, durMs){ return left <= speed*durMs ? left/speed : left-(speed-1)*durMs; }
+/* Ayudante asignado hasta que acabe: cada día trabaja 1 h (a velocidad 1+nivel) y descansa 23 h */
+function helperUntilDone(left, speed){
+  const H=3600000; let rem=left, el=0, n=0;
+  while(rem>0){
+    n++;
+    if(rem<=speed*H){ el+=rem/speed; break; }
+    rem-=speed*H; el+=H;
+    if(rem<=23*H){ el+=rem; rem=0; break; }
+    rem-=23*H; el+=23*H;
+  }
+  return {left:el, windows:n};
+}
 function applyBoost(acc, key, now, opts={}){
   const B=BOOSTS[key]; const durMs=(opts.min||B.min||clockMinutes(acc))*60000;
   const speed = B.helper ? 1+(opts.lvl||((acc.helpers||{})[B.helper]||{}).lvl||1) : B.speed;
@@ -624,11 +636,18 @@ function applyBoost(acc, key, now, opts={}){
   const ups=(acc.ups||[]).map(u=>{
     if(u.end<=now || !B.ws.includes(u.w)) return u;
     if(B.one && u.u!==opts.target) return u;
+    if(B.helper && opts.until){
+      const r=helperUntilDone(u.end-now, speed), nl=Math.round(r.left); changed.push({u:u.u, before:u.end-now, after:nl, windows:r.windows});
+      return {...u, end:now+nl, hlp:{id:B.helper, lvl:speed-1}};
+    }
     const nl=Math.round(boostedLeft(u.end-now, speed, durMs)); changed.push({u:u.u, before:u.end-now, after:nl});
     return {...u, end:now+nl};
   });
   let helpers=acc.helpers, clock=acc.clock;
-  if(B.helper){ const old=(helpers||{})[B.helper]||{}; helpers={...(helpers||{}), [B.helper]:{...old, lvl:opts.lvl||old.lvl||1, end:now+23*3600000}}; }
+  if(B.helper){ const old=(helpers||{})[B.helper]||{}; const c=changed[0];
+    // asignado: queda ocupado hasta que acabe la mejora (y su descanso del último día)
+    const end = opts.until&&c ? Math.max(now+c.after, now+(c.windows-1)*24*3600000+24*3600000) : now+23*3600000;
+    helpers={...(helpers||{}), [B.helper]:{...old, lvl:opts.lvl||old.lvl||1, end, ...(opts.until&&c?{on:c.u}:{on:undefined})}}; }
   // los boosts generales siguen activos un rato: lo que empieces mientras tanto también se acelera
   let act=(acc.act||[]).filter(a=>a.to>now);
   if(!B.one) act=[...act.filter(a=>a.k!==key), {k:key, ws:B.ws, speed, from:now, to:now+durMs}];
@@ -1052,7 +1071,8 @@ function helpersHtml(acc, vil, now){
     for(const id of ids){
       const h=hs[id]||{lvl:0,end:0}, ready=!(h.end>now), max=Math.max(helperMax(id,acc.th), h.lvl||0);
       const lvl=HELPER_REQ[id]?`<select class="hlvl" data-hlvl="${id}" data-acc="${esc(acc._id)}" aria-label="Nivel de ${esc(HELPERS[id])}">${h.lvl?"":`<option value="0" selected>¿Nivel?</option>`}${Array.from({length:max},(_,i)=>`<option value="${i+1}" ${i+1===h.lvl?"selected":""}>Nivel ${i+1}</option>`).join("")}</select>`:"";
-      out.push(`<div class="hp ${ready?"ready":""}">${img("h_"+id,0)}<div><b>${esc(HELPERS[id])}</b>${lvl}${ready?"Disponible":`<span class="num" data-end="${h.end}" data-plain="1">${fmtCountdown(h.end-now)}</span>`}</div></div>`);
+      const onU=h.on&&!ready?(acc.ups||[]).find(u=>u.u===h.on&&u.end>now):null;
+      out.push(`<div class="hp ${ready?"ready":""}">${img("h_"+id,0)}<div><b>${esc(HELPERS[id])}</b>${lvl}${onU?`<span class="small">En ${esc(CAT[onU.id].n)} hasta que acabe</span>`:""}${ready?"Disponible":`<span class="num" data-end="${h.end}" data-plain="1">${fmtCountdown(h.end-now)}</span>`}</div></div>`);
     }
   }
   if(vil==="bb" && (acc.clock || maxLvl(acc.inv||{},1000039))){
@@ -1691,6 +1711,7 @@ document.addEventListener("click",ev=>{
     document.getElementById("modal-root").innerHTML=`<div class="modal-back" data-act="close-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="b-title">
       <div class="mhead"><div class="tile">${img(B.icon,0)}</div><div><h2 id="b-title">${esc(B.name)}</h2><div class="muted small">${esc(B.desc)}</div></div></div>
       ${B.one?`<label for="b-target">Mejora<select id="b-target">${ups.map(u=>`<option value="${esc(u.u)}">${esc(CAT[u.id].n)} ${u.from}→${u.to} · quedan ${fmtDur(u.end-now)}</option>`).join("")}</select></label>
+        <label class="check" for="b-until"><input id="b-until" type="checkbox"> Asignarlo hasta que acabe la mejora (trabaja 1 h cada día, como en el juego)</label>
         ${hl?`<input type="hidden" id="b-lvl" value="${hl}"><div class="small">${B.helper===93000000?"Aprendiz":"Ayudante"} a <b>nivel ${hl}</b>: ahorra ${hl} h por hora (cámbialo en Ayudantes si no es así)</div>`:`<label for="b-lvl">Nivel del ${B.helper===93000000?"aprendiz":"ayudante"} (ahorra tantas horas como su nivel; se guarda para la próxima)<select id="b-lvl">${Array.from({length:hmax},(_,i)=>i+1).map(l=>`<option value="${l}" ${l===hmax?"selected":""}>Nivel ${l}</option>`).join("")}</select></label>`}`:""}
       ${B.clock?`<label for="b-min">Minutos de impulso que quedan (si ya lo activaste hace un rato en el juego, pon los que le quedan)<input id="b-min" type="number" min="1" max="120" value="${clockMinutes(acc)}"></label>
         <label for="b-cd">Se puede volver a usar dentro de (horas)<input id="b-cd" type="number" min="0.5" max="48" step="0.5" value="${acc.clockCdH||7}"></label>`:""}
@@ -1698,9 +1719,9 @@ document.addEventListener("click",ev=>{
       <div class="actions"><button class="btn primary big ${B.ws[0]==="l"||B.ws[0]==="p"?"l":(B.ws[0]==="bb"?"bb":"")}" data-act="doboost" data-k="${k}" data-acc="${esc(acc._id)}">Aplicar</button><button class="btn big" data-act="close">Cerrar</button></div>
     </div></div>`;
     const prev=()=>{
-      const opts={target:(document.getElementById("b-target")||{}).value, lvl:+((document.getElementById("b-lvl")||{}).value||0)||undefined, min:+((document.getElementById("b-min")||{}).value||0)||undefined};
+      const opts={target:(document.getElementById("b-target")||{}).value, lvl:+((document.getElementById("b-lvl")||{}).value||0)||undefined, min:+((document.getElementById("b-min")||{}).value||0)||undefined, until:!!(document.getElementById("b-until")||{}).checked};
       const r=applyBoost(acc,k,Date.now(),opts);
-      document.getElementById("b-prev").innerHTML=r.changed.length?r.changed.map(c=>{ const u=acc.ups.find(x=>x.u===c.u); return `<div class="bprev"><div class="tile sm">${img(u.id,u.to)}</div><div><b>${esc(CAT[u.id].n)}</b><div class="small muted">${fmtDur(c.before)} → <b>${fmtDur(c.after)}</b> (−${fmtDur(c.before-c.after)})</div></div></div>`; }).join(""):`<div class="empty">No hay mejoras en curso a las que aplicarlo.</div>`;
+      document.getElementById("b-prev").innerHTML=r.changed.length?r.changed.map(c=>{ const u=acc.ups.find(x=>x.u===c.u); return `<div class="bprev"><div class="tile sm">${img(u.id,u.to)}</div><div><b>${esc(CAT[u.id].n)}</b><div class="small muted">${fmtDur(c.before)} → <b>${fmtDur(c.after)}</b> (−${fmtDur(c.before-c.after)})${c.windows?` · ${c.windows} día${c.windows>1?"s":""} de ayuda`:""}</div></div></div>`; }).join(""):`<div class="empty">No hay mejoras en curso a las que aplicarlo.</div>`;
     };
     prev(); document.querySelectorAll("#modal-root select,#modal-root input").forEach(i=>i.addEventListener("input",prev));
     return;
@@ -1708,7 +1729,7 @@ document.addEventListener("click",ev=>{
   if(act==="doboost"){
     const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
     const k=el.dataset.k;
-    const opts={target:(document.getElementById("b-target")||{}).value, lvl:+((document.getElementById("b-lvl")||{}).value||0)||undefined, min:+((document.getElementById("b-min")||{}).value||0)||undefined};
+    const opts={target:(document.getElementById("b-target")||{}).value, lvl:+((document.getElementById("b-lvl")||{}).value||0)||undefined, min:+((document.getElementById("b-min")||{}).value||0)||undefined, until:!!(document.getElementById("b-until")||{}).checked};
     const now=Date.now(); const r=applyBoost(acc,k,now,opts);
     if(k==="clock"){
       // la torre se recarga: cuenta atrás hasta poder usarla otra vez (y aviso en la app del móvil)
