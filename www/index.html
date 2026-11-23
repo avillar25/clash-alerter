@@ -449,7 +449,11 @@ function gpFor(acc,w){ const g=acc.gp||{};
   if(w==="bb") return +(g.bb??g.b)||0;
   if(w==="bl") return +(g.bl??g.l)||0;
   return isLab(w) ? (+g.l||0) : (+g.b||0); }
-function effDur(acc,id,from){ const base=catDur(id,from); return Math.round(base*(1-gpFor(acc,CAT[id].w)/100)/1000)*1000; }
+/* Con descuento, el juego redondea hacia abajo: a horas si pasa de un día, a minutos si pasa de una hora
+   (Monolito 1→2: 8 d −20 % = 6 d 9 h 36 min → el juego muestra 6 d 9 h) */
+function effDur(acc,id,from){ const base=catDur(id,from), g=gpFor(acc,CAT[id].w); if(!g) return base;
+  const v=base*(1-g/100), H=3600000, M=60000;
+  return v>=24*H ? Math.floor(v/H)*H : v>=H ? Math.floor(v/M)*M : Math.floor(v/1000)*1000; }
 const ID_HEROHALL = 1000071;
 /* Héroes: los desbloquea el Consejo heroico y cada nivel pide un nivel de Consejo */
 function heroHallLevel(acc){ return maxLvl(acc.inv||{}, ID_HEROHALL); }
