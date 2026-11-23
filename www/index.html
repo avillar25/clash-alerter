@@ -107,6 +107,7 @@ details.sub{border:1px dashed var(--line);border-radius:10px;padding:4px 10px;ma
 .wsech{display:flex;align-items:center;gap:8px;font-weight:700;margin:4px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--line)}
 .wsech img{width:26px;height:26px;object-fit:contain}
 .wsech b{margin-left:auto;font-size:13px;color:var(--muted)}
+.wtab .wnext{display:block;font-size:11px;font-weight:600;opacity:.85;line-height:1.2}
 .hp.ready{background:var(--ok-soft);border-color:transparent}
 /* mejoras en curso */
 .list{display:flex;flex-direction:column;gap:10px}
@@ -1138,10 +1139,7 @@ function upsTabsHtml(key, vil, pairs, now, showAcc, accForCap){
   };
   const content=(cur)=>{ const s=section(cur); return `${s.boostBar}
     ${s.list.length?`<div class="list">${s.list.map(([a,u])=>upRow(a,u,now,showAcc)).join("")}</div>`:`<div class="empty">${esc(s.emptyMsg)}</div>`}`; };
-  // En el Resumen: todo a la vista (constructores, laboratorio, mascotas), sin cambiar de pestaña
-  if(key.startsWith("all:")){ const capSum=w=>(accForCap?[accForCap]:accounts()).reduce((s,a)=>s+((a.cap||{})[w]||0),0);
-    return tabs.map(([w,n,id])=>`<div class="wsec"><div class="wsech">${lvlImg(id)}<span>${esc(n)}</span><b>${cnt(w)}${capSum(w)?"/"+capSum(w):""}</b></div>${content(w)}</div>`).join(""); }
-  return `<div class="wtabs" role="tablist">${tabs.map(([w,n,id])=>`<button class="wtab" role="tab" aria-selected="${w===cur0}" data-act="uptab" data-k="${esc(key)}" data-w="${w}">${lvlImg(id)}<span>${esc(n)}</span><b>${cnt(w)}</b></button>`).join("")}</div>
+  return `<div class="wtabs" role="tablist">${tabs.map(([w,n,id])=>`<button class="wtab" role="tab" aria-selected="${w===cur0}" data-act="uptab" data-k="${esc(key)}" data-w="${w}">${lvlImg(id)}<span>${esc(n)}</span><b>${cnt(w)}</b>${key.startsWith("all:")?(()=>{ const nx=pairs.filter(([a,u])=>u.w===w&&u.end>now).sort((x,y)=>x[1].end-y[1].end)[0]; return `<small class="wnext">${nx?"Acaba "+esc(fmtWhen(nx[1].end)):"Libre"}</small>`; })():""}</button>`).join("")}</div>
     ${content(cur0)}`;
 }
 function ringSvg(p, col){
