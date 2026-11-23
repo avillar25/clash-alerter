@@ -108,8 +108,11 @@ details.sub{border:1px dashed var(--line);border-radius:10px;padding:4px 10px;ma
 .wsech img{width:26px;height:26px;object-fit:contain}
 .wsech b{margin-left:auto;font-size:13px;color:var(--muted)}
 .wtab .wnext{display:block;font-size:11px;font-weight:600;opacity:.85;line-height:1.2}
-.hp.locked{opacity:.75;filter:saturate(.4)}
+.hp.locked>img{opacity:.6;filter:grayscale(.7)}
+.hp.locked b{opacity:.8}
 .hp .small{display:block}
+img.gemi{width:12px;height:15px;vertical-align:-2px;margin-left:3px;object-fit:contain}
+.nw{white-space:nowrap}
 .hp.ready{background:var(--ok-soft);border-color:transparent}
 /* mejoras en curso */
 .list{display:flex;flex-direction:column;gap:10px}
@@ -1086,7 +1089,7 @@ function helpersHtml(acc, vil, now){
   if(vil==="h"){
     const hs=acc.helpers||{};
     const ids=Object.keys(HELPERS).filter(id=>hs[id] || helperMax(id,acc.th)>0);
-    const gem=n=>n?`${n.toLocaleString("es-ES")} 💎`:"gratis";
+    const gem=n=>n?`<span class="nw">${n.toLocaleString("es-ES")}${img("mi_gems",0,"gemi")}</span>`:"gratis";
     for(const id of ids){
       const h=hs[id]||{lvl:0,end:0}, lv=h.lvl||0, max=Math.max(helperMax(id,acc.th), lv), locked=HELPER_REQ[id]&&!lv;
       const ready=!(h.end>now);
