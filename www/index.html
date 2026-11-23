@@ -108,6 +108,8 @@ details.sub{border:1px dashed var(--line);border-radius:10px;padding:4px 10px;ma
 .wsech img{width:26px;height:26px;object-fit:contain}
 .wsech b{margin-left:auto;font-size:13px;color:var(--muted)}
 .wtab .wnext{display:block;font-size:11px;font-weight:600;opacity:.85;line-height:1.2}
+.hp.locked{opacity:.75;filter:saturate(.4)}
+.hp .small{display:block}
 .hp.ready{background:var(--ok-soft);border-color:transparent}
 /* mejoras en curso */
 .list{display:flex;flex-direction:column;gap:10px}
@@ -374,6 +376,10 @@ const RES = {"Gold":"Oro","Elixir":"Elixir","Dark Elixir":"Elixir oscuro","Build
 const HELPERS = {93000000:"Aprendiz", 93000001:"Ayudante de laboratorio", 93000002:"Alquimista", 93000003:"Prospector"};
 /* Ayuntamiento que pide cada nivel de los ayudantes (nivel 1, 2, 3…) */
 const HELPER_REQ = {93000000:[10,10,11,11,12,12,13,14], 93000001:[9,10,10,11,12,12,13,13,14,14,15,16], 93000002:[11,12,13,14,15,16,17]};
+/* Gemas que cuesta cada nivel (el 1 es desbloquearlo; el Ayudante de laboratorio viene gratis) */
+const HELPER_GEMS = {93000000:[500,500,750,750,1000,1000,1000,1000], 93000001:[0,500,500,500,750,750,750,750,1000,1000,1000,1000], 93000002:[100,250,500,1000,1000,1500,1500]};
+function helperGems(id, from, to){ return (HELPER_GEMS[id]||[]).slice(from, to).reduce((s,x)=>s+x,0); }
+function helperOwned(acc, id){ return ((acc.helpers||{})[id]||{}).lvl>0; }
 function helperMax(id, th){ return (HELPER_REQ[id]||[]).filter(r=>r<=(th||0)).length; }
 const SECTIONS = ["buildings","traps","units","spells","siege_machines","heroes","guardians","pets","buildings2","traps2","units2","heroes2"];
 const ID_SMITH = 1000070, ID_WALL = 1000010, ID_WALL2 = 1000033;
@@ -980,7 +986,7 @@ function plannedNotifications(now){
     }
     const nxt=u=>next[u.u]?`${CAT[next[u.u].id].n} ${stepTxt(next[u.u].id,next[u.u].from)}`:"";
     // 1: ayudantes listos otra vez
-    for(const [hid,h] of Object.entries(a.helpers||{})) if(h&&h.end>now+5000&&HELPERS[hid])
+    for(const [hid,h] of Object.entries(a.helpers||{})) if(h&&(h.lvl>0||!HELPER_REQ[hid])&&h.end>now+5000&&HELPERS[hid])
       list.push({id:nid(a._id+":helper:"+hid), title:`🧑‍🔧 ${a.name}: ${HELPERS[hid]} disponible`, body:`Ya puedes volver a usar ${HELPERS[hid].toLowerCase()==="aprendiz"?"al aprendiz":"al "+HELPERS[hid].toLowerCase()}.`, at:h.end});
     if(a.clock && a.clock>now+5000) list.push({id:nid(a._id+":clock"), title:`⏰ ${a.name}: torre del reloj lista`, body:"Ya puedes volver a activar la torre del reloj en la base del constructor.", at:a.clock});
     for(const u of a.ups||[]){
@@ -1080,11 +1086,18 @@ function helpersHtml(acc, vil, now){
   if(vil==="h"){
     const hs=acc.helpers||{};
     const ids=Object.keys(HELPERS).filter(id=>hs[id] || helperMax(id,acc.th)>0);
+    const gem=n=>n?`${n.toLocaleString("es-ES")} 💎`:"gratis";
     for(const id of ids){
-      const h=hs[id]||{lvl:0,end:0}, ready=!(h.end>now), max=Math.max(helperMax(id,acc.th), h.lvl||0);
-      const lvl=HELPER_REQ[id]?`<select class="hlvl" data-hlvl="${id}" data-acc="${esc(acc._id)}" aria-label="Nivel de ${esc(HELPERS[id])}">${h.lvl?"":`<option value="0" selected>¿Nivel?</option>`}${Array.from({length:max},(_,i)=>`<option value="${i+1}" ${i+1===h.lvl?"selected":""}>Nivel ${i+1}</option>`).join("")}</select>`:"";
-      const onU=h.on&&!ready?(acc.ups||[]).find(u=>u.u===h.on&&u.end>now):null;
-      out.push(`<div class="hp ${ready?"ready":""}">${img("h_"+id,0)}<div><b>${esc(HELPERS[id])}</b>${lvl}${onU?`<span class="small">En ${esc(CAT[onU.id].n)} hasta que acabe</span>`:""}${ready?"Disponible":`<span class="num" data-end="${h.end}" data-plain="1">${fmtCountdown(h.end-now)}</span>`}</div></div>`);
+      const h=hs[id]||{lvl:0,end:0}, lv=h.lvl||0, max=Math.max(helperMax(id,acc.th), lv), locked=HELPER_REQ[id]&&!lv;
+      const ready=!(h.end>now);
+      const sel=HELPER_REQ[id]?`<select class="hlvl" data-hlvl="${id}" data-acc="${esc(acc._id)}" aria-label="Nivel de ${esc(HELPERS[id])}"><option value="0" ${lv?"":"selected"}>Bloqueado</option>${Array.from({length:max},(_,i)=>`<option value="${i+1}" ${i+1===lv?"selected":""}>Nivel ${i+1}</option>`).join("")}</select>`:"";
+      const toMax=HELPER_GEMS[id]&&max>lv?helperGems(id,lv,max):0;
+      const cost=locked
+        ? `<span class="small">Desbloquear: <b>${gem(helperGems(id,0,1))}</b>${max>1?` · al máximo (nivel ${max}): ${gem(toMax)}`:""}</span>`
+        : toMax?`<span class="small">Siguiente nivel: ${gem(helperGems(id,lv,lv+1))} · al máximo (nivel ${max}): ${gem(toMax)}</span>`:(HELPER_REQ[id]?`<span class="small">Al máximo con tu ayuntamiento</span>`:"");
+      const onU=!locked&&h.on&&!ready?(acc.ups||[]).find(u=>u.u===h.on&&u.end>now):null;
+      const st=locked?"":(ready?"Disponible":`<span class="num" data-end="${h.end}" data-plain="1">${fmtCountdown(h.end-now)}</span>`);
+      out.push(`<div class="hp ${locked?"locked":ready?"ready":""}">${img("h_"+id,0)}<div><b>${esc(HELPERS[id])}</b>${sel}${onU?`<span class="small">En ${esc(CAT[onU.id].n)} hasta que acabe</span>`:""}${st}${cost}</div></div>`);
     }
   }
   if(vil==="bb" && (acc.clock || maxLvl(acc.inv||{},1000039))){
@@ -1136,7 +1149,7 @@ function upsTabsHtml(key, vil, pairs, now, showAcc, accForCap){
     if(!cap) emptyMsg = cur==="p" ? "Aún no tienes casa de mascotas (se desbloquea en el ayuntamiento 14)." : "No tienes este trabajador.";
     else emptyMsg = cur==="b"||cur==="bb" ? "Tus constructores están libres. Elige abajo lo que acabas de empezar." : "Libre. Elige abajo la investigación que acabas de empezar."; }
   const actives = accForCap ? (accForCap.act||[]).filter(a=>a.to>now && a.ws.includes(cur)) : [];
-  const boostBar = accForCap && (pairs.some(([a,u])=>u.w===cur) || actives.length) ? `<div class="bbar">${actives.map(a=>`<span class="actb">${img(BOOSTS[a.k].icon,0,"bi")}${esc(BOOSTS[a.k].name)} activo · <span class="num" data-end="${a.to}" data-plain="1">${fmtCountdown(a.to-now)}</span></span>`).join("")}${(BOOSTS_BY_W[cur]||[]).map(k=>`<button class="btn bst" data-act="boost" data-k="${k}" data-acc="${esc(accForCap._id)}" data-w="${cur}">${img(BOOSTS[k].icon,0,"bi")}${esc(BOOSTS[k].name)}</button>`).join("")}</div>` : "";
+  const boostBar = accForCap && (pairs.some(([a,u])=>u.w===cur) || actives.length) ? `<div class="bbar">${actives.map(a=>`<span class="actb">${img(BOOSTS[a.k].icon,0,"bi")}${esc(BOOSTS[a.k].name)} activo · <span class="num" data-end="${a.to}" data-plain="1">${fmtCountdown(a.to-now)}</span></span>`).join("")}${(BOOSTS_BY_W[cur]||[]).filter(k=>!BOOSTS[k].helper||helperOwned(accForCap,BOOSTS[k].helper)).map(k=>`<button class="btn bst" data-act="boost" data-k="${k}" data-acc="${esc(accForCap._id)}" data-w="${cur}">${img(BOOSTS[k].icon,0,"bi")}${esc(BOOSTS[k].name)}</button>`).join("")}</div>` : "";
   return {boostBar, list, emptyMsg};
   };
   const content=(cur)=>{ const s=section(cur); return `${s.boostBar}
@@ -1876,7 +1889,7 @@ document.addEventListener("change",ev=>{
     const acc=accounts().find(a=>a._id===t.dataset.acc); if(!acc) return;
     const id=t.dataset.hlvl, old=(acc.helpers||{})[id]||{end:0};
     saveAcc({...acc, helpers:{...(acc.helpers||{}), [id]:{...old, lvl:+t.value}}});
-    toast(HELPERS[id]+" a nivel "+t.value); return;
+    toast(+t.value?HELPERS[id]+" a nivel "+t.value:HELPERS[id]+" marcado como bloqueado"); return;
   }
   if(t.id==="cat-new"){ S.catNew=t.checked; S.catG=""; render(); }
   if(t.id==="cat-all"){ S.catAll=t.checked; render(); }
