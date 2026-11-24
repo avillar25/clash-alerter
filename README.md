@@ -30,3 +30,10 @@ Cada cambio que se sube al repositorio genera una versión nueva en **Releases**
 - `.github/workflows/build-apk.yml`: compila el APK en cada cambio.
 
 Datos e imágenes del juego: Supercell, usados según su Fan Content Policy. Datos extraídos de ClashKing Assets.
+
+
+## Licencia
+
+© 2026 Dixon. **Todos los derechos reservados.** El código está a la vista, pero no se permite copiarlo, redistribuirlo, publicarlo en tiendas ni venderlo sin permiso. Ver [LICENSE](LICENSE).
+
+Contenido de fans no oficial: no está afiliado ni respaldado por Supercell. Más información en la [Política de contenido de fans de Supercell](https://www.supercell.com/fan-content-policy).
