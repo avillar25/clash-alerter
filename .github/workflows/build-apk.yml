@@ -3,6 +3,7 @@ name: Compilar APK
 on:
   push:
     branches: [main]
+    paths-ignore: ["README.md", "LICENSE", "assets-src/**"]   # cambios solo de texto: no recompilar
   workflow_dispatch:
 
 permissions:
