@@ -2,6 +2,10 @@
 
 <!-- La versión más nueva arriba. Cambios pequeños: 1.2, 1.3…  Cambios gordos: 2.0 -->
 
+## v1.3 — 24/11/2026
+- Icono nuevo: anillo de progreso con el martillo de construcción y un reloj de arena (adiós al ayuntamiento 15).
+- Pantalla de inicio con el nuevo icono.
+
 ## v1.2 — 24/11/2026
 - Horario de sueño en formato hora (HH:MM): los ":" se ponen solos y ya no deja escribir más de 4 cifras.
 - "Horas libre antes de avisar" limitado a 1–24.
