@@ -2,6 +2,11 @@
 
 <!-- La versión más nueva arriba. Cambios pequeños: 1.2, 1.3…  Cambios gordos: 2.0 -->
 
+## v1.6 — 24/11/2026
+- Sincronización entre el móvil y el PC con un Gist secreto de tu GitHub (Ajustes → Sincronizar).
+- Versión web para el PC en avillar25.github.io/clash-alerter, con los mismos datos que el móvil.
+- Eventos: ahora también se ven los que están en curso (por ejemplo, los Juegos del clan) y cuándo acaban.
+
 ## v1.5 — 24/11/2026
 - Resumen sin la cabecera "Clash Alerter · Guardado en este navegador".
 

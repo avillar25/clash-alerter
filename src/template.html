@@ -127,6 +127,7 @@ img.gemi{width:12px;height:15px;vertical-align:-2px;margin-left:3px;object-fit:c
 .wprev .wp-h{font-weight:700;margin-bottom:3px}.wprev .wp-free{background:#3a2a12;color:#f6dfa6;border-radius:6px;padding:2px 5px;margin-bottom:3px}
 .wprev .wp-r{display:flex;align-items:center;gap:4px}.wprev .wp-r i{width:6px;height:6px;border-radius:50%;background:#e3a33b;display:inline-block}.wprev .wp-r b{margin-left:auto;color:#f2b632}
 .wprev .wp-l{color:#9fb0c8}.wprev .wp-t{font-size:20px;font-weight:700;color:#f2b632}.wprev .wp-n{font-size:11px}
+.evrow.now b{color:var(--ok)}
 .hp.ready{background:var(--ok-soft);border-color:transparent}
 /* mejoras en curso */
 .list{display:flex;flex-direction:column;gap:10px}
@@ -902,6 +903,103 @@ function hasPetHouse(a){ return !!((a.inv||{})["1000068"]) || (a.ups||[]).some(u
 function bbBuilders(v){ const inv=v.inv||{}; const has=id=>inv[id]||(v.ups||[]).some(u=>u.id===id&&u.from>0); return (v.bh?1:0)+(has(ID_OTTO)?1:0)+(has(ID_BOTO)?1:0); }
 function accounts(){ return Object.entries(S.docs).filter(([k,v])=>k.startsWith("acc_")&&v).map(([k,v])=>({...v,_id:k,cap:{...(v.cap||{}), p:hasPetHouse(v)?1:0, ...(v.capManual?{}:{bb:Math.max((v.cap||{}).bb||0, bbBuilders(v))})}})).sort((a,b)=>(b.th||0)-(a.th||0) || (b.bh||0)-(a.bh||0) || (a.order||0)-(b.order||0)); }
 function settings(){ return S.docs.settings || {}; }
+/* ===== Sincronización entre el móvil y el PC: un Gist secreto de GitHub =====
+   Cada documento lleva _mt (cuándo se cambió). Al sincronizar se baja el Gist, gana el más nuevo
+   documento a documento, los borrados quedan apuntados en __del, y se sube el resultado. */
+const SYNC_DEL="__del", SYNC_FILE="clash-alerter.json", SYNC_DESC="Clash Alerter · sincronización (no borrar)";
+const SYNC={cfg:null, busy:false, again:false, last:0, err:null, timer:null};
+async function syncCfgLoad(){
+  try{ if(NATIVE&&P.Preferences){ const r=await P.Preferences.get({key:"gh-sync"}); SYNC.cfg=r&&r.value?JSON.parse(r.value):null; }
+       else SYNC.cfg=JSON.parse(localStorage.getItem("gh-sync")||"null"); }catch(e){ SYNC.cfg=null; }
+}
+async function syncCfgSave(){
+  const v=SYNC.cfg?JSON.stringify(SYNC.cfg):null;
+  try{ if(NATIVE&&P.Preferences){ if(v) await P.Preferences.set({key:"gh-sync", value:v}); else await P.Preferences.remove({key:"gh-sync"}); }
+       else { if(v) localStorage.setItem("gh-sync",v); else localStorage.removeItem("gh-sync"); } }catch(e){}
+}
+function syncOn(){ return !!(SYNC.cfg&&SYNC.cfg.token); }
+async function gh(path, opt={}){
+  const r=await fetch("https://api.github.com"+path, {...opt, headers:{"Accept":"application/vnd.github+json","Authorization":"Bearer "+SYNC.cfg.token,"X-GitHub-Api-Version":"2022-11-28",...(opt.body?{"Content-Type":"application/json"}:{})}});
+  if(r.status===401) throw new Error("El token no es válido o ha caducado");
+  if(r.status===403||r.status===404) throw new Error("El token no tiene permiso de Gists (lectura y escritura)");
+  if(!r.ok) throw new Error("GitHub respondió "+r.status);
+  return r.status===204?null:r.json();
+}
+async function syncFindGist(){
+  if(SYNC.cfg.gist) return SYNC.cfg.gist;
+  for(let page=1; page<=5; page++){
+    const list=await gh(`/gists?per_page=100&page=${page}`);
+    const g=(list||[]).find(x=>x.files&&x.files[SYNC_FILE]);
+    if(g){ SYNC.cfg.gist=g.id; await syncCfgSave(); return g.id; }
+    if(!list||list.length<100) break;
+  }
+  const g=await gh("/gists",{method:"POST", body:JSON.stringify({description:SYNC_DESC, public:false, files:{[SYNC_FILE]:{content:JSON.stringify({v:1,docs:{}})}}})});
+  SYNC.cfg.gist=g.id; await syncCfgSave(); return g.id;
+}
+function syncMerge(local, remote){
+  const del={...(remote[SYNC_DEL]||{}), ...(local[SYNC_DEL]||{})};
+  for(const [k,v] of Object.entries(remote[SYNC_DEL]||{})) del[k]=Math.max(v, del[k]||0);
+  const out={}, keys=new Set([...Object.keys(local),...Object.keys(remote)]);
+  for(const k of keys){
+    if(k===SYNC_DEL) continue;
+    const a=local[k], b=remote[k];
+    let w = a===undefined ? b : b===undefined ? a : ((b&&b._mt||0) > (a&&a._mt||0) ? b : a);
+    if(w===undefined) continue;
+    if(del[k] && del[k] >= ((w&&w._mt)||0)) continue;     // borrado después del último cambio
+    out[k]=w;
+  }
+  // La misma cuenta del juego (mismo tag) creada en los dos dispositivos: se queda la más reciente
+  const byTag={};
+  for(const [k,v] of Object.entries(out)) if(k.startsWith("acc_")&&v&&v.tag) (byTag[v.tag]=byTag[v.tag]||[]).push(k);
+  for(const ks of Object.values(byTag)) if(ks.length>1){
+    // "lo último que se tocó": cambio guardado, importación, mejora empezada o terminada
+    const act=v=>Math.max(v._mt||0, v.imp||0, ...(v.ups||[]).map(u=>(u.end||0)-(u.dur||0)), ...(v.done||[]).map(d=>Math.min(d.end||0, Date.now())));
+    ks.sort((x,y)=>(act(out[y])-act(out[x])) || (x<y?-1:1));
+    for(const k of ks.slice(1)){ delete out[k]; del[k]=Date.now(); }
+  }
+  const cut=Date.now()-60*86400000;                       // los borrados se olvidan a los 60 días
+  out[SYNC_DEL]=Object.fromEntries(Object.entries(del).filter(([k,t])=>t>cut));
+  return out;
+}
+const syncable=docs=>{ const o={}; for(const [k,v] of Object.entries(docs)) if(k!=="alerts") o[k]=v; return o; };
+async function syncNow(manual){
+  if(!syncOn()) return;
+  if(SYNC.busy){ SYNC.again=true; return; }
+  SYNC.busy=true;
+  try{
+    const id=await syncFindGist();
+    const g=await gh("/gists/"+id);
+    const f=g.files&&g.files[SYNC_FILE];
+    let content=f&&f.content; if(f&&f.truncated&&f.raw_url) content=await (await fetch(f.raw_url)).text();
+    const remote=content?(JSON.parse(content).docs||{}):{};
+    const merged=syncMerge(syncable(S.docs), remote);
+    const local=JSON.stringify(syncable(S.docs)), after=JSON.stringify(merged);
+    if(after!==local){                                    // había cambios en el otro dispositivo
+      S.docs={...merged, ...(S.docs.alerts?{alerts:S.docs.alerts}:{})};
+      if(S.mode==="native") nativeSave(); else localSave();
+      checkDone(); render();
+    }
+    if(after!==JSON.stringify(remote)) await gh("/gists/"+id,{method:"PATCH", body:JSON.stringify({files:{[SYNC_FILE]:{content:JSON.stringify({v:1, t:Date.now(), docs:merged})}}})});
+    SYNC.last=Date.now(); SYNC.err=null;
+    if(manual) toast("Sincronizado");
+  }catch(e){ SYNC.err=String(e.message||e); if(manual) toast("No se pudo sincronizar: "+SYNC.err); }
+  SYNC.busy=false;
+  if(SYNC.again){ SYNC.again=false; syncNow(); } else render();
+}
+function syncSoon(){ if(!syncOn()) return; clearTimeout(SYNC.timer); SYNC.timer=setTimeout(()=>syncNow(), 2500); }
+function syncPanel(){
+  if(!NATIVE && S.mode==="db") return `<details class="panel"><summary>Sincronizar con el móvil</summary>
+    <div class="small">Esta versión dentro de Claude no puede conectarse a GitHub. Para tener tus datos sincronizados con el móvil, usa la web <b>avillar25.github.io/clash-alerter</b>.</div></details>`;
+  const on=syncOn();
+  return `<details class="panel"><summary>Sincronizar ${NATIVE?"con el PC":"con el móvil"}</summary>
+    ${on?`<div class="small okt">Conectado${SYNC.last?` · última vez ${esc(fmtWhen(SYNC.last))}`:""}</div>${SYNC.err?`<div class="small" style="color:var(--bad,#c0392b)">${esc(SYNC.err)}</div>`:""}
+      <div class="actions"><button class="btn" data-act="syncnow">Sincronizar ahora</button><button class="btn" data-act="syncoff">Desconectar</button></div>`
+    :`<div class="small">Pega tu token de GitHub (solo con permiso de Gists) para tener los mismos datos en el móvil y en el PC. Se guarda solo en este dispositivo.</div>
+      <label for="gh-token">Token de GitHub<input id="gh-token" type="password" autocomplete="off" placeholder="github_pat_…" value="${esc(S.tokDraft||"")}"></label>
+      <div class="actions"><button class="btn primary" data-act="syncon">Conectar</button></div>
+      <div class="small muted">Si ya tienes datos en el otro dispositivo, se juntan: de cada cuenta se queda la versión cambiada más recientemente.</div>`}
+  </details>`;
+}
 function localLoad(){ try{ return JSON.parse(localStorage.getItem("coc-avisos")||"{}"); }catch(e){ return {}; } }
 function localSave(){ try{ localStorage.setItem("coc-avisos", JSON.stringify(S.docs)); }catch(e){} }
 let nativeTimer=null;
@@ -913,10 +1011,12 @@ function nativeSave(){
   },300);
 }
 function save(id, data){
-  if(data===null) delete S.docs[id]; else S.docs[id]=data;
+  const now=Date.now();
+  if(data===null){ delete S.docs[id]; if(id!==SYNC_DEL) S.docs[SYNC_DEL]={...(S.docs[SYNC_DEL]||{}), [id]:now}; }
+  else S.docs[id]=(data&&typeof data==="object"&&!Array.isArray(data))?{...data, _mt:now}:data;
   render();
-  if(S.mode==="native"){ nativeSave(); return Promise.resolve(); }
-  if(S.mode==="local"){ localSave(); return Promise.resolve(); }
+  if(S.mode==="native"){ nativeSave(); syncSoon(); return Promise.resolve(); }
+  if(S.mode==="local"){ localSave(); syncSoon(); return Promise.resolve(); }
   if(!col) return Promise.resolve();
   const clean = data===null ? null : JSON.parse(JSON.stringify(data, (k,v)=>(k==="_id"||k==="_justDone")?undefined:v));
   const prev = writeChains[id] || Promise.resolve();
@@ -937,8 +1037,9 @@ async function initStore(){
     S.mode="native";
     try{ const r=await P.Preferences.get({key:"coc-avisos"}); S.docs=r&&r.value?JSON.parse(r.value):localLoad(); }catch(e){ S.docs=localLoad(); }
     S.ready=true; checkDone(); render(); initNotifications(); checkUpdate(false);
+    syncCfgLoad().then(()=>syncNow());
     if(P.App){
-      P.App.addListener("appStateChange", st=>{ if(st.isActive){ checkDone(); render(); syncNotifications(); checkUpdate(false); } });
+      P.App.addListener("appStateChange", st=>{ if(st.isActive){ checkDone(); render(); syncNotifications(); checkUpdate(false); syncNow(); } });
       P.App.addListener("appUrlOpen", e=>openFromUrl(e&&e.url));
       if(P.App.getLaunchUrl) P.App.getLaunchUrl().then(r=>openFromUrl(r&&r.url)).catch(()=>{});
       P.App.addListener("backButton", ()=>{ if(document.querySelector("#modal-root .modal")) closeModal(); else if(S.view!=="all"){ S.view="all"; render(); } else P.App.exitApp(); });
@@ -967,8 +1068,11 @@ async function initStore(){
     }, err=>{ clearTimeout(timer); S.note="Se ha perdido la conexión con tus datos. Recarga la página."; S.ready=true; render(); });
   } else {
     S.mode="local"; S.docs=localLoad(); S.ready=true;
-    S.note="Esta vista no puede sincronizar con tu cuenta de Claude: los datos se guardan solo en este navegador.";
+    const pages=/github\.io$/.test(location.hostname);
+    S.note=pages?"":"Esta vista no puede sincronizar con tu cuenta de Claude: los datos se guardan solo en este navegador.";
     checkDone(); render();
+    syncCfgLoad().then(()=>{ render(); syncNow(); });
+    document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ checkDone(); syncNow(); } });
   }
 }
 /* Notificaciones del propio móvil: se reprograman todas cada vez que cambia algo */
@@ -1552,10 +1656,22 @@ function freeNowHtml(accs, now){
     ${ready.length?`<div class="small muted" style="margin-top:6px">También listos: </div><div class="who">${ready.map(r=>btn(r.a,r.vil,r.t)).join("")}</div>`:""}
   </div>`;
 }
+/* Eventos que están pasando ahora mismo (las mismas reglas del calendario) */
+function ongoingEvents(now){
+  const d=new Date(now), y=d.getUTCFullYear(), m=d.getUTCMonth(), U=(day,h)=>Date.UTC(y,m,day,h), H=3600000, out=[];
+  if(now>=U(1,8)&&now<U(11,8)) out.push({ico:"⚔️", title:"Liga de guerra de clanes", until:U(11,8)});
+  if(now>=U(22,8)&&now<U(28,8)) out.push({ico:"🎯", title:"Juegos del clan", until:U(28,8)});
+  for(let i=0;i<4;i++){ const x=new Date(Date.UTC(y,m,d.getUTCDate()-i)); if(x.getUTCDay()!==5) continue;
+    const st=Date.UTC(x.getUTCFullYear(),x.getUTCMonth(),x.getUTCDate(),7); if(now>=st&&now<st+72*H) out.push({ico:"🏰", title:"Fin de semana de asaltos", until:st+72*H}); }
+  return out;
+}
 function eventsHtml(now){
-  const ev=gameEvents(now,21).filter(e=>!/Últimas horas|Último día de los/.test(e.title)).slice(0,4);
-  if(!ev.length) return "";
-  return `<details class="panel"><summary>Próximos eventos</summary><div class="list">${ev.map(e=>`<div class="evrow"><span class="ei">${e.ico}</span><div><b>${esc(e.title)}</b><div class="small muted">${esc(fmtWhen(e.at))}</div></div></div>`).join("")}</div></details>`;
+  const ev=gameEvents(now,21).filter(e=>!/Últimas horas|Último día de los/.test(e.title)).slice(0,4), on=ongoingEvents(now);
+  if(!ev.length&&!on.length) return "";
+  return `<details class="panel"><summary>Eventos</summary>
+    ${on.length?`<div class="acc-label">Ahora</div><div class="list">${on.map(e=>`<div class="evrow now"><span class="ei">${e.ico}</span><div><b>${esc(e.title)}</b><div class="small">En curso · acaba ${esc(fmtWhen(e.until))}</div></div></div>`).join("")}</div>`:""}
+    ${ev.length?`<div class="acc-label">Próximos</div><div class="list">${ev.map(e=>`<div class="evrow"><span class="ei">${e.ico}</span><div><b>${esc(e.title)}</b><div class="small muted">${esc(fmtWhen(e.at))}</div></div></div>`).join("")}</div>`:""}
+  </details>`;
 }
 function renderAll(now){
   const accs=accounts();
@@ -1623,7 +1739,7 @@ function settingsPanel(){
       <label for="slto">Me levanto a las<input id="slto" class="hhmm" type="text" inputmode="numeric" maxlength="5" placeholder="08:00" value="${esc(hhmm(st.sleep?st.sleep.to:8))}"></label>
     </div>
     <div class="actions"><button class="btn" data-act="savetopic">Guardar ajustes</button></div>
-  </details>${backupPanel()}
+  </details>${syncPanel()}${backupPanel()}
   <details class="panel"><summary>Widget en la pantalla de inicio</summary>
     <div class="small">Mira tus mejoras sin abrir la app. Hay dos tamaños: grande (próximas mejoras, trabajadores libres y ayudantes listos) y pequeño (solo la próxima mejora).</div>
     <div class="actions"><button class="btn primary" data-act="wadd">Añadir widget</button></div>
@@ -1635,7 +1751,7 @@ function settingsPanel(){
     ${changelogHtml()}
     <div class="small muted">© 2026 avillar25. Todos los derechos reservados. Contenido de fans no oficial: no está afiliado, respaldado ni patrocinado por Supercell. Más información en www.supercell.com/fan-content-policy</div>
   </details>`;
-  return backupPanel()+`<details class="panel">
+  return syncPanel()+backupPanel()+`<details class="panel">
     <summary>Plan y horario</summary>
     <div class="small">Los avisos al móvil llegan con la app Clash Alerter instalada. Aquí en la web solo se usa el horario de sueño para el plan.</div>
     <label class="check" for="idleon"><input id="idleon" type="checkbox" ${idleOn?"checked":""}> Avisarme si un trabajador sigue libre</label>
@@ -1800,6 +1916,15 @@ document.addEventListener("click",ev=>{
       }});
     return;
   }
+  if(act==="syncon"){
+    const tok=((document.getElementById("gh-token")||{}).value||"").trim();
+    if(!/^(github_pat_|ghp_)\w{20,}$/.test(tok)){ toast("Eso no parece un token de GitHub (empieza por github_pat_)."); return; }
+    SYNC.cfg={token:tok}; SYNC.err=null; S.tokDraft=""; toast("Conectando con GitHub…");
+    syncCfgSave().then(()=>syncNow(true)).then(()=>{ if(SYNC.err){ SYNC.cfg=null; syncCfgSave(); render(); } });
+    return;
+  }
+  if(act==="syncnow"){ syncNow(true); return; }
+  if(act==="syncoff"){ SYNC.cfg=null; syncCfgSave(); render(); toast("Sincronización desconectada en este dispositivo. Tus datos se quedan aquí."); return; }
   if(act==="wadd"){
     const prevL=`<div class="wprev big"><div class="wp-h">Clash Alerter</div><div class="wp-free">1 constructor libre</div><div class="wp-r"><i></i>Torre Tesla<b>3:20</b></div><div class="wp-r"><i style="background:#5fa8e0"></i>Bruja nocturna<b>5:02</b></div><div class="wp-r"><i></i>Laboratorio<b>1 d 4 h</b></div></div>`;
     const prevS=`<div class="wprev"><div class="wp-l">Próxima mejora</div><div class="wp-t">3:20</div><div class="wp-n">Torre Tesla</div><div class="wp-l">Principal</div></div>`;
@@ -2001,6 +2126,7 @@ document.addEventListener("input",ev=>{
   const el=ev.target;
   if(el.id==="cat-q"){ S.catQ=el.value; render(); return; }
   if(el.classList&&el.classList.contains("hhmm")){ fmtHHMMInput(el); return; }
+  if(el.id==="gh-token"){ S.tokDraft=el.value; return; }
   if(el.id==="idleh"){ const d=el.value.replace(/\D/g,"").slice(0,2); el.value=d&&+d>24?"24":d; }
 });
 document.addEventListener("change",ev=>{
