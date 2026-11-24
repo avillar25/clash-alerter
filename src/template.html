@@ -1672,7 +1672,7 @@ function render(){
   const focus=document.activeElement && document.activeElement.id; const sel=focus&&document.activeElement.selectionStart;
   const openDetails=[...document.querySelectorAll("details[open] summary")].map(s=>s.textContent);
   app.innerHTML=`
-  <div class="top"><div><h1>Clash Alerter</h1><div class="sub">${S.mode==="db"?"Sincronizado entre tus dispositivos":"Guardado en este navegador"}</div></div></div>
+  ${NATIVE?"":`<div class="top"><div><h1>Clash Alerter</h1><div class="sub">${S.mode==="db"?"Sincronizado entre tus dispositivos":"Guardado en este navegador"}</div></div></div>`}
   ${S.note?`<div class="banner">${esc(S.note)}</div>`:""}
   ${updateBanner()}
   ${accs.length?`<div class="tabs" role="toolbar" aria-label="Cuentas">
