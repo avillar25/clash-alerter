@@ -115,6 +115,8 @@ img.gemi{width:12px;height:15px;vertical-align:-2px;margin-left:3px;object-fit:c
 .nw{white-space:nowrap}
 .eqi.locked{opacity:.6}
 .eqi.locked .tile img{filter:grayscale(1)}
+.eqbtns{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+.btn.eqown{font-size:11px;padding:2px 8px;min-height:26px;width:auto}
 .hp.ready{background:var(--ok-soft);border-color:transparent}
 /* mejoras en curso */
 .list{display:flex;flex-direction:column;gap:10px}
@@ -554,7 +556,7 @@ function mergeImport(acc, parsed){
     const sameEnd=Math.abs(o.end-nu.end)<5*60*1000;
     return {...nu, u:o.u, nt: sameEnd ? o.nt : 0};
   });
-  return {...acc, tag:parsed.tag||acc.tag, th:parsed.th, bh:parsed.bh, inv:parsed.inv, ups, eq:parsed.eq, helpers:parsed.helpers, clock:parsed.clock, cap:acc.capManual?acc.cap:parsed.cap, imp:parsed.imp};
+  return {...acc, tag:parsed.tag||acc.tag, th:parsed.th, bh:parsed.bh, inv:parsed.inv, ups, eq:parsed.eq, eqOwn:Object.fromEntries(Object.entries(acc.eqOwn||{}).filter(([id,v])=>!v||((parsed.eq||{})[id]||0)<=1)), helpers:parsed.helpers, clock:parsed.clock, cap:acc.capManual?acc.cap:parsed.cap, imp:parsed.imp};
 }
 function applyDone(acc, now){
   const done=(acc.ups||[]).filter(u=>u.end<=now);
@@ -1307,12 +1309,20 @@ function groupById(rows){
 /* Equipamiento de héroes: se mejora al instante en la herrería, aquí solo se sigue */
 function eqMax(id, bs, th){ const e=EQ[id]; let m=1; for(let L=1; L<=e.bs.length; L++){ if(e.bs[L-1]<=bs && e.th[L-1]<=th) m=L; else break; } return m; }
 function oreRow(o){ const ks=["shiny_ore","glowy_ore","starry_ore"]; return o.map((v,i)=>v?`<span class="cost">${img("res_"+ks[i],0,"bi")}${fmtNum(v)}</span>`:"").join(""); }
+/* El JSON del juego trae también equipamiento que no tienes (a nivel 1), así que:
+   a nivel 2 o más = lo tienes; épico a nivel 1 = bloqueado; normal a nivel 1 = lo tienes si tu herrería lo permite.
+   Se puede corregir a mano con "Lo tengo" / "No lo tengo". */
+function eqOwned(acc, id){
+  const o=(acc.eqOwn||{})[id]; if(o!==undefined) return !!o;
+  const l=(acc.eq||{})[id]; if(!l) return false; if(l>1) return true;
+  const e=EQ[id]; return !e.e && (e.bs[0]||1)<=Math.max(1,maxLvl(acc.inv||{},ID_SMITH));
+}
 function equipmentHtml(acc){
-  const eq=acc.eq||{}; const ids=Object.keys(eq).filter(id=>EQ[id]);
+  const eq=acc.eq||{}; const ids=Object.keys(eq).filter(id=>EQ[id]&&eqOwned(acc,id));
   // héroes que tienes (o estás desbloqueando): su equipamiento que no tienes sale como bloqueado
   const heroNames=new Set(Object.entries(CAT).filter(([id,c])=>c.g==="h_her"&&((acc.inv||{})[id]||(acc.ups||[]).some(u=>u.id===+id))).map(([id,c])=>c.n));
-  const locked=Object.keys(EQ).filter(id=>!eq[id]&&heroNames.has(EQ[id].h));
-  if(!ids.length) return `<details class="panel"><summary>Equipamiento de héroes</summary><div class="empty">Reimporta el JSON de esta cuenta para cargar tu equipamiento.</div></details>`;
+  const locked=Object.keys(EQ).filter(id=>!eqOwned(acc,id)&&heroNames.has(EQ[id].h));
+  if(!Object.keys(eq).length) return `<details class="panel"><summary>Equipamiento de héroes</summary><div class="empty">Reimporta el JSON de esta cuenta para cargar tu equipamiento.</div></details>`;
   const bs=maxLvl(acc.inv||{},ID_SMITH), th=acc.th||0;
   const tot=[0,0,0]; const byHero={};
   locked.forEach(id=>{ (byHero[EQ[id].h]=byHero[EQ[id].h]||[]).push({id,l:0,m:0,locked:true}); });
@@ -1322,11 +1332,11 @@ function equipmentHtml(acc){
     <div><div class="acc-label" style="margin-bottom:4px">Mineral que te falta para subirlo todo</div><div class="costs">${oreRow(tot)||`<span class="okt small">Todo al máximo</span>`}</div></div>
     ${Object.entries(byHero).map(([h,list])=>`<div class="group"><h3>${esc(h)}</h3><div class="items">${list.sort((a,b)=>(a.locked?1:0)-(b.locked?1:0)||EQ[b.id].e-EQ[a.id].e||b.l-a.l).map(x=>x.locked?`<div class="eqi locked ${EQ[x.id].e?"epic":""}">
       <div class="tile sm">${img("eq_"+x.id,0)}</div>
-      <div><div class="nm">${esc(EQ[x.id].n)} <span class="lvl">Bloqueado</span></div><div class="sub">${EQ[x.id].e?"Épico: se consigue en eventos o en la tienda":(EQ[x.id].bs[0]>bs?`Se desbloquea con la herrería a nivel ${EQ[x.id].bs[0]}`:"Desbloquéalo en la herrería")}</div></div><span></span>
+      <div><div class="nm">${esc(EQ[x.id].n)} <span class="lvl">Bloqueado</span></div><div class="sub">${EQ[x.id].e?"Épico: se consigue en eventos o en la tienda":(EQ[x.id].bs[0]>bs?`Se desbloquea con la herrería a nivel ${EQ[x.id].bs[0]}`:"Desbloquéalo en la herrería")}</div></div><button class="btn icon eqown" data-act="eqown" data-v="1" data-acc="${esc(acc._id)}" data-id="${x.id}">Lo tengo</button>
     </div>`:`<div class="eqi ${EQ[x.id].e?"epic":""}">
       <div class="tile sm">${img("eq_"+x.id,0)}</div>
       <div><div class="nm">${esc(EQ[x.id].n)} <span class="lvl">${x.l}/${x.m}</span></div><div class="sub">${x.next?`Siguiente: ${oreRow(x.next)}`:"Al máximo"}</div></div>
-      ${x.next?`<button class="btn icon" data-act="equp" data-acc="${esc(acc._id)}" data-id="${x.id}" aria-label="Subir un nivel">+1</button>`:""}
+      <span class="eqbtns">${x.next?`<button class="btn icon" data-act="equp" data-acc="${esc(acc._id)}" data-id="${x.id}" aria-label="Subir un nivel">+1</button>`:""}<button class="btn icon eqown" data-act="eqown" data-v="0" data-acc="${esc(acc._id)}" data-id="${x.id}" title="Marcar como que no lo tienes">No lo tengo</button></span>
     </div>`).join("")}</div></div>`).join("")}
   </details>`;
 }
@@ -1788,6 +1798,11 @@ document.addEventListener("click",ev=>{
     saveAcc(useItem(r.acc,k)); closeModal();
     toast(BOOSTS[k].name+" aplicado a "+r.changed.length+" mejora"+(r.changed.length===1?"":"s")+(k==="clock"?". Podrás volver a usarla "+fmtWhen(r.acc.clock)+".":"."));
     return;
+  }
+  if(act==="eqown"){
+    const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
+    const id=el.dataset.id, v=el.dataset.v==="1", eq={...(acc.eq||{})}; if(v&&!eq[id]) eq[id]=1;
+    saveAcc({...acc, eq, eqOwn:{...(acc.eqOwn||{}), [id]:v}}); toast(EQ[id].n+(v?": lo tienes":": marcado como bloqueado")); return;
   }
   if(act==="equp"){
     const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
