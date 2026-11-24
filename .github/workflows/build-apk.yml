@@ -3,7 +3,7 @@ name: Compilar APK
 on:
   push:
     branches: [main, "prueba/**"]   # las ramas prueba/* solo compilan, no publican versión
-    paths-ignore: ["README.md", "LICENSE", "assets-src/**"]   # cambios solo de texto: no recompilar
+    paths-ignore: ["README.md", "LICENSE", "assets-src/**", ".github/workflows/pages.yml"]   # cambios solo de texto o de la web: no recompilar
   workflow_dispatch:
 
 permissions:
