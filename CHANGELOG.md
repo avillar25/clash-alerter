@@ -2,6 +2,10 @@
 
 <!-- La versión más nueva arriba. Cambios pequeños: 1.2, 1.3…  Cambios gordos: 2.0 -->
 
+## v1.2 — 24/11/2026
+- Horario de sueño en formato hora (HH:MM): los ":" se ponen solos y ya no deja escribir más de 4 cifras.
+- "Horas libre antes de avisar" limitado a 1–24.
+
 ## v1.1 — 24/11/2026
 Primera versión de la app del móvil.
 - Dos cuentas con aldea principal y base nocturna, importando el JSON del juego.
