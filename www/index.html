@@ -1317,6 +1317,8 @@ function eqOwned(acc, id){
   const l=(acc.eq||{})[id]; if(!l) return false; if(l>1) return true;
   const e=EQ[id]; return !e.e && (e.bs[0]||1)<=Math.max(1,maxLvl(acc.inv||{},ID_SMITH));
 }
+/* Orden de los héroes como en el juego (por cuándo se desbloquean en el Consejo heroico) */
+function heroOrder(name){ const e=Object.entries(CAT).find(([id,c])=>c.g==="h_her"&&c.n===name); return e?(e[1].hu||99)*1e9+(+e[0]):1e12; }
 function equipmentHtml(acc){
   const eq=acc.eq||{}; const ids=Object.keys(eq).filter(id=>EQ[id]&&eqOwned(acc,id));
   // héroes que tienes (o estás desbloqueando): su equipamiento que no tienes sale como bloqueado
@@ -1330,7 +1332,7 @@ function equipmentHtml(acc){
   return `<details class="panel"><summary>Equipamiento de héroes</summary>
     <div class="small muted">Herrería nivel ${bs||"?"}. Los máximos son los que permite tu herrería ahora mismo.</div>
     <div><div class="acc-label" style="margin-bottom:4px">Mineral que te falta para subirlo todo</div><div class="costs">${oreRow(tot)||`<span class="okt small">Todo al máximo</span>`}</div></div>
-    ${Object.entries(byHero).map(([h,list])=>`<div class="group"><h3>${esc(h)}</h3><div class="items">${list.sort((a,b)=>(a.locked?1:0)-(b.locked?1:0)||EQ[b.id].e-EQ[a.id].e||b.l-a.l).map(x=>x.locked?`<div class="eqi locked ${EQ[x.id].e?"epic":""}">
+    ${Object.entries(byHero).sort((a,b)=>heroOrder(a[0])-heroOrder(b[0])).map(([h,list])=>`<div class="group"><h3>${esc(h)}</h3><div class="items">${list.sort((a,b)=>(a.locked?1:0)-(b.locked?1:0)||EQ[b.id].e-EQ[a.id].e||b.l-a.l).map(x=>x.locked?`<div class="eqi locked ${EQ[x.id].e?"epic":""}">
       <div class="tile sm">${img("eq_"+x.id,0)}</div>
       <div><div class="nm">${esc(EQ[x.id].n)} <span class="lvl">Bloqueado</span></div><div class="sub">${EQ[x.id].e?"Épico: se consigue en eventos o en la tienda":(EQ[x.id].bs[0]>bs?`Se desbloquea con la herrería a nivel ${EQ[x.id].bs[0]}`:"Desbloquéalo en la herrería")}</div></div><button class="btn icon eqown" data-act="eqown" data-v="1" data-acc="${esc(acc._id)}" data-id="${x.id}">Lo tengo</button>
     </div>`:`<div class="eqi ${EQ[x.id].e?"epic":""}">
