@@ -1456,12 +1456,12 @@ function renderAcc(acc, now){
     ${upsTabsHtml(acc._id+":"+vil, vil, ups.map(u=>[acc,u]), now, false, acc)}
   </div>
   ${catalogHtml(acc,vil)}
+  ${vil==="h"?equipmentHtml(acc):""}
   ${nightHtml(acc,vil,now)}
   ${magicHtml(acc,vil,now)}
   ${planHtml(acc,vil,now)}
   ${progressHtml(acc,vil,now)}
   ${wallsHtml(acc,vil)}
-  ${vil==="h"?equipmentHtml(acc):""}
   ${accSettings(acc)}`;
 }
 /* ¿Está todo el mundo trabajando? Ocupados / total por tipo y quién tiene huecos */
