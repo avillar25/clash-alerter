@@ -28,6 +28,14 @@ jobs:
       - name: Comprobar SDK de Android
         run: echo "ANDROID_HOME=$ANDROID_HOME" && ls "$ANDROID_HOME"
 
+      - name: Leer versión y cambios
+        run: |
+          V=$(tr -d ' \n\r' < VERSION)
+          echo "VERSION=$V" >> $GITHUB_ENV
+          # Notas de esta versión: su apartado de CHANGELOG.md
+          awk -v v="## v$V" 'index($0,v)==1{f=1;next} /^## /{f=0} f' CHANGELOG.md > notas.md
+          cat notas.md
+
       - name: Instalar dependencias
         run: npm ci
 
@@ -51,11 +59,17 @@ jobs:
           name: clash-alerter-apk
           path: clash-alerter.apk
 
+      - name: Borrar las versiones de prueba antiguas (v2, v3)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for t in v2 v3; do gh release delete "$t" --cleanup-tag -y -R "$GITHUB_REPOSITORY" || true; done
+
       - name: Publicar versión para descargar desde el móvil
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.run_number }}
-          name: Clash Alerter ${{ github.run_number }}
+          tag_name: v${{ env.VERSION }}
+          name: Clash Alerter v${{ env.VERSION }}
           make_latest: true
-          body: ${{ github.event.head_commit.message }}
+          body_path: notas.md
           files: clash-alerter.apk

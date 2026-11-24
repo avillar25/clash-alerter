@@ -117,6 +117,10 @@ img.gemi{width:12px;height:15px;vertical-align:-2px;margin-left:3px;object-fit:c
 .eqi.locked .tile img{filter:grayscale(1)}
 .eqbtns{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
 .btn.eqown{font-size:11px;padding:2px 8px;min-height:26px;width:auto}
+.chl{margin:8px 0}
+.chl ul,.updnotes{margin:4px 0 0 18px;padding:0}
+.chl li,.updnotes li{font-size:13px;margin:2px 0}
+.chl li.nob{list-style:none;margin-left:-18px;color:var(--muted)}
 .hp.ready{background:var(--ok-soft);border-color:transparent}
 /* mejoras en curso */
 .list{display:flex;flex-direction:column;gap:10px}
@@ -406,6 +410,8 @@ const P = NATIVE ? (window.Capacitor.Plugins||{}) : {};
 /* Versión de la app y repositorio de GitHub de donde salen las actualizaciones (los rellena la compilación) */
 const APP_VERSION = "__APP_VERSION__";
 const UPDATE_REPO = "__UPDATE_REPO__";
+/* Historial de cambios (de CHANGELOG.md): [{v:"v1.2", date:"…", text:"- …"}] */
+const CHANGELOG = __CHANGELOG__;
 
 /* ---------- imágenes (se cargan aparte para que la página abra rápido) ---------- */
 let IMG=null;
@@ -1036,7 +1042,9 @@ function restoreBackup(raw){
 }
 /* Avisa en la app cuando GitHub tiene una versión más nueva del APK */
 const UPD={latest:null, url:null, notes:"", checked:0, error:null};
-function verNum(v){ const m=String(v||"").match(/(\d+)\s*$/); return m?+m[1]:0; }
+/* Compara versiones tipo v1.2, v1.10, v2.0 */
+function verParts(v){ return String(v||"").replace(/^v/i,"").split(".").map(x=>parseInt(x,10)||0); }
+function verCmp(a,b){ const A=verParts(a), B=verParts(b); for(let i=0;i<Math.max(A.length,B.length);i++){ const d=(A[i]||0)-(B[i]||0); if(d) return d; } return 0; }
 async function checkUpdate(force){
   if(!NATIVE || !/^[\w.-]+\/[\w.-]+$/.test(UPDATE_REPO)) return;
   if(!force && Date.now()-UPD.checked < 3*3600000) return;
@@ -1051,11 +1059,16 @@ async function checkUpdate(force){
   render();
   if(force) toast(UPD.error?UPD.error:(hasUpdate()?"Hay una versión nueva: "+UPD.latest:"Tienes la última versión"));
 }
-function hasUpdate(){ return UPD.latest && verNum(UPD.latest)>verNum(APP_VERSION); }
+function hasUpdate(){ return UPD.latest && /^v?\d/.test(APP_VERSION) && verCmp(UPD.latest, APP_VERSION)>0; }
+function changelogHtml(){
+  if(!CHANGELOG.length) return "";
+  const li=txt=>txt.split("\n").map(l=>l.trim()).filter(Boolean).map(l=>l.startsWith("- ")?`<li>${esc(l.slice(2))}</li>`:`<p class="small">${esc(l)}</p>`).join("").replace(/<\/li><p/g,"</li></ul><p").replace(/(<li>)/,"<ul>$1");
+  return `<details class="sub"><summary>Historial de cambios</summary>${CHANGELOG.map(c=>`<div class="chl"><b>${esc(c.v)}</b>${c.date?` <span class="muted small">${esc(c.date)}</span>`:""}<ul>${c.text.split("\n").map(l=>l.trim()).filter(Boolean).map(l=>l.startsWith("- ")?`<li>${esc(l.slice(2))}</li>`:`<li class="nob">${esc(l)}</li>`).join("")}</ul></div>`).join("")}</details>`;
+}
 function updateBanner(){
   if(!hasUpdate()) return "";
   return `<div class="panel upd"><div class="panel-head"><h2>Versión nueva disponible</h2><span class="muted small">Tienes la ${esc(APP_VERSION)} · nueva ${esc(UPD.latest)}</span></div>
-    ${UPD.notes?`<div class="small">${esc(UPD.notes.split("\n").filter(l=>l&&!/^(Co-Authored-By|Claude-Session):/i.test(l)).slice(0,6).join(" · "))}</div>`:""}
+    ${UPD.notes?`<div class="small"><b>Qué cambia:</b><ul class="updnotes">${UPD.notes.split("\n").map(l=>l.trim()).filter(l=>l&&!/^(Co-Authored-By|Claude-Session):/i.test(l)).slice(0,8).map(l=>`<li>${esc(l.replace(/^- /,""))}</li>`).join("")}</ul></div>`:""}
     <div class="actions"><button class="btn primary big" data-act="updget">Descargar e instalar</button></div>
     <div class="small muted">Se descarga el APK; ábrelo y pulsa Instalar. Tus cuentas y avisos se conservan.</div></div>`;
 }
@@ -1573,6 +1586,7 @@ function settingsPanel(){
     <div class="small">Clash Alerter ${esc(APP_VERSION)}${UPD.latest?` · última publicada: ${esc(UPD.latest)}`:""}</div>
     ${UPD.error?`<div class="small muted">${esc(UPD.error)}</div>`:""}
     <div class="actions"><button class="btn" data-act="updcheck">Buscar actualizaciones</button></div>
+    ${changelogHtml()}
     <div class="small muted">© 2026 avillar25. Todos los derechos reservados. Contenido de fans no oficial: no está afiliado, respaldado ni patrocinado por Supercell. Más información en www.supercell.com/fan-content-policy</div>
   </details>`;
   return backupPanel()+`<details class="panel">
