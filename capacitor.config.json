@@ -1,5 +1,5 @@
 {
-  "appId": "es.dixon.clashalerter",
+  "appId": "es.alexvillar.clashalerter",
   "appName": "Clash Alerter",
   "webDir": "www",
   "android": { "allowMixedContent": false },

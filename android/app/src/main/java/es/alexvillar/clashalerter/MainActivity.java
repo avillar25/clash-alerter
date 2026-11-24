@@ -1,4 +1,4 @@
-package es.dixon.clashalerter;
+package es.alexvillar.clashalerter;
 
 import com.getcapacitor.BridgeActivity;
 

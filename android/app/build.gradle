@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "es.dixon.clashalerter"
+    namespace "es.alexvillar.clashalerter"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "es.dixon.clashalerter"
+        applicationId "es.alexvillar.clashalerter"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode((System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger())
