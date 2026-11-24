@@ -113,6 +113,8 @@ details.sub{border:1px dashed var(--line);border-radius:10px;padding:4px 10px;ma
 .hp .small{display:block}
 img.gemi{width:12px;height:15px;vertical-align:-2px;margin-left:3px;object-fit:contain}
 .nw{white-space:nowrap}
+.eqi.locked{opacity:.6}
+.eqi.locked .tile img{filter:grayscale(1)}
 .hp.ready{background:var(--ok-soft);border-color:transparent}
 /* mejoras en curso */
 .list{display:flex;flex-direction:column;gap:10px}
@@ -1307,14 +1309,21 @@ function eqMax(id, bs, th){ const e=EQ[id]; let m=1; for(let L=1; L<=e.bs.length
 function oreRow(o){ const ks=["shiny_ore","glowy_ore","starry_ore"]; return o.map((v,i)=>v?`<span class="cost">${img("res_"+ks[i],0,"bi")}${fmtNum(v)}</span>`:"").join(""); }
 function equipmentHtml(acc){
   const eq=acc.eq||{}; const ids=Object.keys(eq).filter(id=>EQ[id]);
+  // héroes que tienes (o estás desbloqueando): su equipamiento que no tienes sale como bloqueado
+  const heroNames=new Set(Object.entries(CAT).filter(([id,c])=>c.g==="h_her"&&((acc.inv||{})[id]||(acc.ups||[]).some(u=>u.id===+id))).map(([id,c])=>c.n));
+  const locked=Object.keys(EQ).filter(id=>!eq[id]&&heroNames.has(EQ[id].h));
   if(!ids.length) return `<details class="panel"><summary>Equipamiento de héroes</summary><div class="empty">Reimporta el JSON de esta cuenta para cargar tu equipamiento.</div></details>`;
   const bs=maxLvl(acc.inv||{},ID_SMITH), th=acc.th||0;
   const tot=[0,0,0]; const byHero={};
+  locked.forEach(id=>{ (byHero[EQ[id].h]=byHero[EQ[id].h]||[]).push({id,l:0,m:0,locked:true}); });
   ids.forEach(id=>{ const e=EQ[id], l=eq[id], m=eqMax(id,bs,th); const need=[0,0,0]; for(let x=l; x<m; x++) e.c[x-1].forEach((v,i)=>need[i]+=v); need.forEach((v,i)=>tot[i]+=v); (byHero[e.h]=byHero[e.h]||[]).push({id,l,m,need,next:l<m?e.c[l-1]:null}); });
   return `<details class="panel"><summary>Equipamiento de héroes</summary>
     <div class="small muted">Herrería nivel ${bs||"?"}. Los máximos son los que permite tu herrería ahora mismo.</div>
     <div><div class="acc-label" style="margin-bottom:4px">Mineral que te falta para subirlo todo</div><div class="costs">${oreRow(tot)||`<span class="okt small">Todo al máximo</span>`}</div></div>
-    ${Object.entries(byHero).map(([h,list])=>`<div class="group"><h3>${esc(h)}</h3><div class="items">${list.sort((a,b)=>EQ[b.id].e-EQ[a.id].e||b.l-a.l).map(x=>`<div class="eqi ${EQ[x.id].e?"epic":""}">
+    ${Object.entries(byHero).map(([h,list])=>`<div class="group"><h3>${esc(h)}</h3><div class="items">${list.sort((a,b)=>(a.locked?1:0)-(b.locked?1:0)||EQ[b.id].e-EQ[a.id].e||b.l-a.l).map(x=>x.locked?`<div class="eqi locked ${EQ[x.id].e?"epic":""}">
+      <div class="tile sm">${img("eq_"+x.id,0)}</div>
+      <div><div class="nm">${esc(EQ[x.id].n)} <span class="lvl">Bloqueado</span></div><div class="sub">${EQ[x.id].e?"Épico: se consigue en eventos o en la tienda":(EQ[x.id].bs[0]>bs?`Se desbloquea con la herrería a nivel ${EQ[x.id].bs[0]}`:"Desbloquéalo en la herrería")}</div></div><span></span>
+    </div>`:`<div class="eqi ${EQ[x.id].e?"epic":""}">
       <div class="tile sm">${img("eq_"+x.id,0)}</div>
       <div><div class="nm">${esc(EQ[x.id].n)} <span class="lvl">${x.l}/${x.m}</span></div><div class="sub">${x.next?`Siguiente: ${oreRow(x.next)}`:"Al máximo"}</div></div>
       ${x.next?`<button class="btn icon" data-act="equp" data-acc="${esc(acc._id)}" data-id="${x.id}" aria-label="Subir un nivel">+1</button>`:""}
