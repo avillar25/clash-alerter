@@ -59,6 +59,11 @@ jobs:
           name: clash-alerter-apk
           path: clash-alerter.apk
 
+      - name: Sustituir la versión si ya existía (mismo número = mismo cambio)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete "v$VERSION" --cleanup-tag -y -R "$GITHUB_REPOSITORY" || true
+
       - name: Publicar versión para descargar desde el móvil
         uses: softprops/action-gh-release@v2
         with:

@@ -9,7 +9,7 @@ res = root / "android/app/src/main/res"
 BG = (29, 36, 51)            # azul noche
 TRACK = (58, 69, 96)
 GOLD = (242, 182, 50)
-HAMMER = root / "assets-src/hammer_of_building.webp"
+WOOD = (168, 107, 53); WOOD_D = (122, 74, 34); STEEL = (213, 218, 226); STEEL_D = (150, 158, 172)
 
 def round_cap(d, c, r, w, ang):
     a = math.radians(ang); x = c + (r - w / 2) * math.cos(a); y = c + (r - w / 2) * math.sin(a)
@@ -31,6 +31,20 @@ def hourglass(size):
     d.rounded_rectangle([cx - hw - s * 0.05, bot, cx + hw + s * 0.05, bot + bar], radius=bar / 3, fill=wood)
     return im
 
+def builder_hammer(T):
+    """Martillo de constructor dibujado: mango de madera y cabeza de acero, inclinado."""
+    L = Image.new("RGBA", (T, T), (0, 0, 0, 0)); d = ImageDraw.Draw(L); c = T / 2
+    hw = T * 0.042; hl = T * 0.40                                     # mango
+    d.rounded_rectangle([c - hw, c - T * 0.06, c + hw, c - T * 0.06 + hl], radius=hw, fill=WOOD)
+    d.rounded_rectangle([c - hw, c - T * 0.06, c - hw * 0.25, c - T * 0.06 + hl], radius=hw * 0.6, fill=WOOD_D)
+    d.rounded_rectangle([c - hw * 1.25, c + T * 0.25, c + hw * 1.25, c + T * 0.30], radius=hw * 0.5, fill=WOOD_D)   # agarre
+    w2 = T * 0.17; h2 = T * 0.075; top = c - T * 0.155                 # cabeza
+    d.rounded_rectangle([c - w2, top, c + w2, top + h2 * 2], radius=h2 * 0.45, fill=STEEL)
+    d.rounded_rectangle([c - w2, top + h2 * 1.35, c + w2, top + h2 * 2], radius=h2 * 0.45, fill=STEEL_D)
+    d.rounded_rectangle([c - w2 - T * 0.03, top + h2 * 0.15, c - w2 + T * 0.01, top + h2 * 1.85], radius=T * 0.012, fill=STEEL_D)  # boca
+    d.rounded_rectangle([c - hw * 1.4, top - T * 0.005, c + hw * 1.4, top + h2 * 2 + T * 0.005], radius=hw * 0.4, fill=WOOD_D)    # cuña
+    return L.rotate(-35, resample=Image.BICUBIC, center=(c, c))
+
 def emblem(T):
     """El dibujo sin fondo, centrado en un lienzo T×T (cabe en la zona segura de Android)."""
     im = Image.new("RGBA", (T, T), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
@@ -38,8 +52,7 @@ def emblem(T):
     d.ellipse([c - r, c - r, c + r, c + r], outline=TRACK, width=int(w))
     d.arc([c - r, c - r, c + r, c + r], start=-90, end=200, fill=GOLD, width=int(w))
     round_cap(d, c, r, w, -90); round_cap(d, c, r, w, 200)
-    g = Image.open(HAMMER).convert("RGBA"); h = int(T * 0.50); g = g.resize((int(g.width * h / g.height), h), Image.LANCZOS)
-    im.alpha_composite(g, (int(c - g.width / 2), int(c - g.height / 2 - T * 0.01)))
+    im.alpha_composite(builder_hammer(T), (0, 0))
     b = hourglass(int(T * 0.30)); a = math.radians(45); bx = c + r * 0.80 * math.cos(a); by = c + r * 0.80 * math.sin(a)
     im.alpha_composite(b, (int(bx - b.width / 2), int(by - b.height / 2)))
     return im
@@ -61,8 +74,7 @@ for name, k in dens.items():
     sq = Image.new("RGBA", (big.width,) * 2, (0, 0, 0, 0)); ImageDraw.Draw(sq).rounded_rectangle([0, 0, sq.width - 1, sq.width - 1], radius=sq.width * 0.22, fill=BG)
     inner = big.resize((int(big.width * 0.86),) * 2, Image.LANCZOS); sq.alpha_composite(inner, ((sq.width - inner.width) // 2,) * 2)
     save(sq, res / f"mipmap-{name}/ic_launcher.png", n)
-    rd = Image.new("RGBA", (big.width,) * 2, (0, 0, 0, 0)); ImageDraw.Draw(rd).ellipse([0, 0, rd.width - 1, rd.width - 1], fill=BG)
-    inner = big.resize((int(big.width * 0.80),) * 2, Image.LANCZOS); rd.alpha_composite(inner, ((rd.width - inner.width) // 2,) * 2)
+    rd = sq   # contorno cuadrado también donde el móvil pide el icono "redondo"
     save(rd, res / f"mipmap-{name}/ic_launcher_round.png", n)
 
 (res / "values/ic_launcher_background.xml").write_text('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#1D2433</color>\n</resources>\n')

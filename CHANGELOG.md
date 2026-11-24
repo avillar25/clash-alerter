@@ -3,7 +3,7 @@
 <!-- La versión más nueva arriba. Cambios pequeños: 1.2, 1.3…  Cambios gordos: 2.0 -->
 
 ## v1.3 — 24/11/2026
-- Icono nuevo: anillo de progreso con el martillo de construcción y un reloj de arena (adiós al ayuntamiento 15).
+- Icono nuevo: anillo de progreso con un martillo de constructor y un reloj de arena, con contorno cuadrado (adiós al ayuntamiento 15).
 - Pantalla de inicio con el nuevo icono.
 
 ## v1.2 — 24/11/2026
