@@ -1688,14 +1688,24 @@ document.addEventListener("click",ev=>{
     const id=+el.dataset.id, from=+el.dataset.from, c=CAT[id], now=Date.now();
     const b=busy(acc,now), cap=(acc.cap||{})[c.w]||1;
     const full=(b[c.w]||0)>=cap, canGob=GOBLIN[c.w]&&vilOf(id)==="h"&&!goblinUp(acc,c.w,now);
-    const useGob=full&&canGob;
-    const r=startUpgrade(acc,id,from,effDur(acc,id,from),now,undefined,useGob);
-    saveAcc(r.acc);
-    let msg=`${c.n} empezada · acaba ${fmtWhen(r.up.end)}`;
-    if(r.up.boosted) msg+=` (con ${BOOSTS[r.up.boosted[0]].name.toLowerCase()})`;
-    if(useGob) msg+=` · con el ${GOBLIN[c.w].toLowerCase()}`;
-    else if(full) msg+=` · ojo: no te quedaban ${WORKER[c.w].toLowerCase()} libres`;
-    toastAction(msg, "Cambiar tiempo", ()=>{ const b2=document.querySelector(`[data-act=adjust][data-u="${r.up.u}"]`); if(b2) b2.click(); });
+    const go=(useGob)=>{
+      const r=startUpgrade(acc,id,from,effDur(acc,id,from),now,undefined,useGob);
+      saveAcc(r.acc);
+      let msg=`${c.n} empezada · acaba ${fmtWhen(r.up.end)}`;
+      if(r.up.boosted) msg+=` (con ${BOOSTS[r.up.boosted[0]].name.toLowerCase()})`;
+      if(useGob) msg+=` · con el ${GOBLIN[c.w].toLowerCase()}`;
+      toastAction(msg, "Cambiar tiempo", ()=>{ const b2=document.querySelector(`[data-act=adjust][data-u="${r.up.u}"]`); if(b2) b2.click(); });
+    };
+    if(full){
+      // Todos ocupados: no se deja empezar nada más (salvo con el duende, pagando gemas en el juego)
+      // Todos ocupados: si el duende está libre se usa; si no, no se deja empezar
+      if(canGob){ go(true); return; }
+      const nf=nextFree(acc,c.w,now), OCC={b:"todos los constructores están ocupados", bb:"todos los constructores están ocupados", l:"el laboratorio está ocupado", bl:"el laboratorio estelar está ocupado", p:"la casa de mascotas está ocupada"};
+      const g=GOBLIN[c.w]&&vilOf(id)==="h"?` y el ${GOBLIN[c.w].toLowerCase()} también`:"";
+      toast(`No puedes empezar ${c.n}: ${OCC[c.w]||"no hay trabajadores libres"}${g}.${nf&&nf.at?` El primero queda libre ${fmtWhen(nf.at)}.`:""}`);
+      return;
+    }
+    go(false);
     return;
   }
   if(act==="adjust"){
