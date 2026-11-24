@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@drawable/widget_bg" android:padding="12dp">
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+        <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@mipmap/ic_launcher" android:contentDescription="@null" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="8dp"
+            android:text="Clash Alerter" android:textColor="#EEF2F8" android:textSize="13sp" android:textStyle="bold" />
+        <TextView android:id="@+id/w_updated" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textColor="#9FB0C8" android:textSize="11sp" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/w_free" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"
+        android:background="@drawable/widget_free_bg" android:orientation="horizontal" android:gravity="center_vertical"
+        android:paddingStart="10dp" android:paddingEnd="10dp" android:paddingTop="6dp" android:paddingBottom="6dp" android:visibility="gone">
+        <TextView android:id="@+id/w_free_text" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textColor="#F6DFA6" android:textSize="12sp" android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginTop="6dp">
+        <LinearLayout android:id="@+id/w_row1" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical" android:paddingTop="3dp" android:paddingBottom="3dp">
+            <ImageView android:id="@+id/w_dot1" android:layout_width="8dp" android:layout_height="8dp" android:src="@drawable/widget_dot" android:contentDescription="@null" />
+            <TextView android:id="@+id/w_name1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:layout_marginStart="8dp" android:textColor="#EEF2F8" android:textSize="12sp" android:maxLines="1" android:ellipsize="end" />
+            <Chronometer android:id="@+id/w_chr1" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#F2B632" android:textSize="12sp" android:textStyle="bold" />
+            <TextView android:id="@+id/w_time1" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#F2B632" android:textSize="12sp" android:textStyle="bold" android:visibility="gone" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/w_row2" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical" android:paddingTop="3dp" android:paddingBottom="3dp">
+            <ImageView android:id="@+id/w_dot2" android:layout_width="8dp" android:layout_height="8dp" android:src="@drawable/widget_dot" android:contentDescription="@null" />
+            <TextView android:id="@+id/w_name2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:layout_marginStart="8dp" android:textColor="#EEF2F8" android:textSize="12sp" android:maxLines="1" android:ellipsize="end" />
+            <Chronometer android:id="@+id/w_chr2" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#F2B632" android:textSize="12sp" android:textStyle="bold" />
+            <TextView android:id="@+id/w_time2" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#F2B632" android:textSize="12sp" android:textStyle="bold" android:visibility="gone" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/w_row3" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical" android:paddingTop="3dp" android:paddingBottom="3dp">
+            <ImageView android:id="@+id/w_dot3" android:layout_width="8dp" android:layout_height="8dp" android:src="@drawable/widget_dot" android:contentDescription="@null" />
+            <TextView android:id="@+id/w_name3" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:layout_marginStart="8dp" android:textColor="#EEF2F8" android:textSize="12sp" android:maxLines="1" android:ellipsize="end" />
+            <Chronometer android:id="@+id/w_chr3" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#F2B632" android:textSize="12sp" android:textStyle="bold" />
+            <TextView android:id="@+id/w_time3" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#F2B632" android:textSize="12sp" android:textStyle="bold" android:visibility="gone" />
+        </LinearLayout>
+        <TextView android:id="@+id/w_empty" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textColor="#9FB0C8" android:textSize="12sp" android:paddingTop="6dp" android:visibility="gone" />
+    </LinearLayout>
+
+    <TextView android:id="@+id/w_ready" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp"
+        android:textColor="#A8E0A0" android:textSize="11sp" android:maxLines="1" android:ellipsize="end" android:visibility="gone" />
+</LinearLayout>

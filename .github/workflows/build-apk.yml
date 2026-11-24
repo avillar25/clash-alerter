@@ -2,7 +2,7 @@ name: Compilar APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, "prueba/**"]   # las ramas prueba/* solo compilan, no publican versión
     paths-ignore: ["README.md", "LICENSE", "assets-src/**"]   # cambios solo de texto: no recompilar
   workflow_dispatch:
 
@@ -50,7 +50,12 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          set -o pipefail
+          if ! ./gradlew assembleDebug --no-daemon 2>&1 | tee ../build.log; then
+            # Errores de compilación visibles como anotaciones del run
+            grep -E "error:|e: |FAILURE|What went wrong" -A2 ../build.log | head -40 | while IFS= read -r l; do echo "::error::$l"; done
+            exit 1
+          fi
 
       - name: Renombrar APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk clash-alerter.apk
@@ -61,11 +66,13 @@ jobs:
           path: clash-alerter.apk
 
       - name: Sustituir la versión si ya existía (mismo número = mismo cambio)
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release delete "v$VERSION" --cleanup-tag -y -R "$GITHUB_REPOSITORY" || true
 
       - name: Publicar versión para descargar desde el móvil
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.VERSION }}

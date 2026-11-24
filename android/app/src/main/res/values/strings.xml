@@ -4,4 +4,6 @@
     <string name="title_activity_main">Clash Alerter</string>
     <string name="package_name">es.alexvillar.clashalerter</string>
     <string name="custom_url_scheme">es.alexvillar.clashalerter</string>
+    <string name="widget_large_desc">Próximas mejoras, trabajadores libres y ayudantes listos</string>
+    <string name="widget_small_desc">La próxima mejora que acaba</string>
 </resources>

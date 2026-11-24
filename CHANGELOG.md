@@ -2,6 +2,11 @@
 
 <!-- La versión más nueva arriba. Cambios pequeños: 1.2, 1.3…  Cambios gordos: 2.0 -->
 
+## v1.4 — 24/11/2026
+- Widgets para la pantalla de inicio: grande (próximas 3 mejoras, trabajadores libres y ayudantes listos) y pequeño (la próxima mejora).
+- Botón "Añadir widget" en Ajustes para elegir el tamaño y colocarlo.
+- Al tocar el widget se abre la app en la cuenta de esa mejora.
+
 ## v1.3 — 24/11/2026
 - Icono nuevo: anillo de progreso con un martillo de constructor y un reloj de arena, con contorno cuadrado (adiós al ayuntamiento 15).
 - Pantalla de inicio con el nuevo icono.
