@@ -1,4 +1,5 @@
 name: Publicar web (GitHub Pages)
+# Publica la app como web en https://avillar25.github.io/clash-alerter
 
 on:
   push:
