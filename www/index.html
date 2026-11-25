@@ -415,10 +415,10 @@ const isLab = w => w==="l"||w==="bl"||w==="p";
 const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 const P = NATIVE ? (window.Capacitor.Plugins||{}) : {};
 /* Versión de la app y repositorio de GitHub de donde salen las actualizaciones (los rellena la compilación) */
-const APP_VERSION = "v1.5";
+const APP_VERSION = "v1.7";
 const UPDATE_REPO = "";
 /* Historial de cambios (de CHANGELOG.md): [{v:"v1.2", date:"…", text:"- …"}] */
-const CHANGELOG = [{"v": "v1.5", "date": "24/11/2026", "text": "- Resumen sin la cabecera \"Clash Alerter · Guardado en este navegador\"."}, {"v": "v1.4", "date": "24/11/2026", "text": "- Widgets para la pantalla de inicio: grande (próximas 3 mejoras, trabajadores libres y ayudantes listos) y pequeño (la próxima mejora).\n- Botón \"Añadir widget\" en Ajustes para elegir el tamaño y colocarlo.\n- Al tocar el widget se abre la app en la cuenta de esa mejora."}, {"v": "v1.3", "date": "24/11/2026", "text": "- Icono nuevo: anillo de progreso con un martillo de constructor y un reloj de arena, con contorno cuadrado (adiós al ayuntamiento 15).\n- Pantalla de inicio con el nuevo icono."}, {"v": "v1.2", "date": "24/11/2026", "text": "- Horario de sueño en formato hora (HH:MM): los \":\" se ponen solos y ya no deja escribir más de 4 cifras.\n- \"Horas libre antes de avisar\" limitado a 1–24."}, {"v": "v1.1", "date": "24/11/2026", "text": "Primera versión de la app del móvil.\n- Dos cuentas con aldea principal y base nocturna, importando el JSON del juego.\n- Mejoras en curso por pestañas (constructores, laboratorio, mascotas) y empezar mejoras al momento con el tiempo del juego.\n- No deja empezar mejoras con todos los trabajadores ocupados, salvo que el duende esté libre.\n- Pase de oro, pociones, sopa, carne, torre del reloj (duración por nivel y recarga de 22 h) y ayudantes (también hasta que acabe la mejora).\n- Ayudantes con su nivel, bloqueados o no, y gemas para desbloquearlos y maxearlos.\n- Terminar con gemas o libros, martillos e inventario de objetos mágicos.\n- Plan de mejoras con propuesta recomendada, progreso del ayuntamiento, muros, guardianes y nivel máximo de cada mejora.\n- Equipamiento de héroes en el orden del juego, con el que no tienes marcado como bloqueado.\n- Avisos en el móvil: mejora terminada (y qué toca después según el plan), trabajador libre, ayudantes y torre del reloj listos, y eventos (Liga de guerra, Juegos del clan, asaltos y fin de temporada).\n- Aviso dentro de la app cuando hay una versión nueva, con su historial de cambios."}];
+const CHANGELOG = [{"v": "v1.7", "date": "25/11/2026", "text": "- Sincronización: siempre se leen los datos frescos de GitHub (antes el móvil o el navegador podían leer una copia guardada y no ver los cambios del otro lado).\n- Los cambios se suben al momento al salir de la app o cambiar de pestaña, sin esperar.\n- Si hubiera más de una copia en GitHub, todos los dispositivos usan la misma. En Ajustes se ve qué copia usa cada uno."}, {"v": "v1.6", "date": "24/11/2026", "text": "- Sincronización entre el móvil y el PC con un Gist secreto de tu GitHub (Ajustes → Sincronizar).\n- Versión web para el PC en avillar25.github.io/clash-alerter, con los mismos datos que el móvil.\n- Eventos: ahora también se ven los que están en curso (por ejemplo, los Juegos del clan) y cuándo acaban."}, {"v": "v1.5", "date": "24/11/2026", "text": "- Resumen sin la cabecera \"Clash Alerter · Guardado en este navegador\"."}, {"v": "v1.4", "date": "24/11/2026", "text": "- Widgets para la pantalla de inicio: grande (próximas 3 mejoras, trabajadores libres y ayudantes listos) y pequeño (la próxima mejora).\n- Botón \"Añadir widget\" en Ajustes para elegir el tamaño y colocarlo.\n- Al tocar el widget se abre la app en la cuenta de esa mejora."}, {"v": "v1.3", "date": "24/11/2026", "text": "- Icono nuevo: anillo de progreso con un martillo de constructor y un reloj de arena, con contorno cuadrado (adiós al ayuntamiento 15).\n- Pantalla de inicio con el nuevo icono."}, {"v": "v1.2", "date": "24/11/2026", "text": "- Horario de sueño en formato hora (HH:MM): los \":\" se ponen solos y ya no deja escribir más de 4 cifras.\n- \"Horas libre antes de avisar\" limitado a 1–24."}, {"v": "v1.1", "date": "24/11/2026", "text": "Primera versión de la app del móvil.\n- Dos cuentas con aldea principal y base nocturna, importando el JSON del juego.\n- Mejoras en curso por pestañas (constructores, laboratorio, mascotas) y empezar mejoras al momento con el tiempo del juego.\n- No deja empezar mejoras con todos los trabajadores ocupados, salvo que el duende esté libre.\n- Pase de oro, pociones, sopa, carne, torre del reloj (duración por nivel y recarga de 22 h) y ayudantes (también hasta que acabe la mejora).\n- Ayudantes con su nivel, bloqueados o no, y gemas para desbloquearlos y maxearlos.\n- Terminar con gemas o libros, martillos e inventario de objetos mágicos.\n- Plan de mejoras con propuesta recomendada, progreso del ayuntamiento, muros, guardianes y nivel máximo de cada mejora.\n- Equipamiento de héroes en el orden del juego, con el que no tienes marcado como bloqueado.\n- Avisos en el móvil: mejora terminada (y qué toca después según el plan), trabajador libre, ayudantes y torre del reloj listos, y eventos (Liga de guerra, Juegos del clan, asaltos y fin de temporada).\n- Aviso dentro de la app cuando hay una versión nueva, con su historial de cambios."}];
 
 /* ---------- imágenes (se cargan aparte para que la página abra rápido) ---------- */
 let IMG=null;
@@ -919,19 +919,25 @@ async function syncCfgSave(){
 }
 function syncOn(){ return !!(SYNC.cfg&&SYNC.cfg.token); }
 async function gh(path, opt={}){
-  const r=await fetch("https://api.github.com"+path, {...opt, headers:{"Accept":"application/vnd.github+json","Authorization":"Bearer "+SYNC.cfg.token,"X-GitHub-Api-Version":"2022-11-28",...(opt.body?{"Content-Type":"application/json"}:{})}});
+  const r=await fetch("https://api.github.com"+path, {...opt, cache:"no-store", headers:{"Accept":"application/vnd.github+json","Authorization":"Bearer "+SYNC.cfg.token,"X-GitHub-Api-Version":"2022-11-28",...(opt.body?{"Content-Type":"application/json"}:{})}});
   if(r.status===401) throw new Error("El token no es válido o ha caducado");
   if(r.status===403||r.status===404) throw new Error("El token no tiene permiso de Gists (lectura y escritura)");
   if(!r.ok) throw new Error("GitHub respondió "+r.status);
   return r.status===204?null:r.json();
 }
-async function syncFindGist(){
-  if(SYNC.cfg.gist) return SYNC.cfg.gist;
+async function syncFindGist(recheck){
+  if(SYNC.cfg.gist && !recheck) return SYNC.cfg.gist;
+  // Si por lo que sea hay más de un Gist de la app, todos los dispositivos usan el más antiguo
+  let found=[];
   for(let page=1; page<=5; page++){
     const list=await gh(`/gists?per_page=100&page=${page}`);
-    const g=(list||[]).find(x=>x.files&&x.files[SYNC_FILE]);
-    if(g){ SYNC.cfg.gist=g.id; await syncCfgSave(); return g.id; }
+    found=found.concat((list||[]).filter(x=>x.files&&x.files[SYNC_FILE]));
     if(!list||list.length<100) break;
+  }
+  if(found.length){
+    found.sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at)));
+    if(SYNC.cfg.gist!==found[0].id){ SYNC.cfg.gist=found[0].id; await syncCfgSave(); }
+    return found[0].id;
   }
   const g=await gh("/gists",{method:"POST", body:JSON.stringify({description:SYNC_DESC, public:false, files:{[SYNC_FILE]:{content:JSON.stringify({v:1,docs:{}})}}})});
   SYNC.cfg.gist=g.id; await syncCfgSave(); return g.id;
@@ -967,10 +973,10 @@ async function syncNow(manual){
   if(SYNC.busy){ SYNC.again=true; return; }
   SYNC.busy=true;
   try{
-    const id=await syncFindGist();
+    const id=await syncFindGist(manual || !SYNC.checked); SYNC.checked=true;
     const g=await gh("/gists/"+id);
     const f=g.files&&g.files[SYNC_FILE];
-    let content=f&&f.content; if(f&&f.truncated&&f.raw_url) content=await (await fetch(f.raw_url)).text();
+    let content=f&&f.content; if(f&&f.truncated&&f.raw_url) content=await (await fetch(f.raw_url+(f.raw_url.includes("?")?"&":"?")+"t="+Date.now(), {cache:"no-store"})).text();
     const remote=content?(JSON.parse(content).docs||{}):{};
     const merged=syncMerge(syncable(S.docs), remote);
     const local=JSON.stringify(syncable(S.docs)), after=JSON.stringify(merged);
@@ -986,13 +992,15 @@ async function syncNow(manual){
   SYNC.busy=false;
   if(SYNC.again){ SYNC.again=false; syncNow(); } else render();
 }
-function syncSoon(){ if(!syncOn()) return; clearTimeout(SYNC.timer); SYNC.timer=setTimeout(()=>syncNow(), 2500); }
+function syncSoon(){ if(!syncOn()) return; clearTimeout(SYNC.timer); SYNC.timer=setTimeout(()=>{ SYNC.timer=null; syncNow(); }, 2500); }
+// Al salir de la app o cambiar de pestaña, sube ya lo pendiente sin esperar
+function syncFlush(){ if(SYNC.timer){ clearTimeout(SYNC.timer); SYNC.timer=null; syncNow(); } }
 function syncPanel(){
   if(!NATIVE && S.mode==="db") return `<details class="panel"><summary>Sincronizar con el móvil</summary>
     <div class="small">Esta versión dentro de Claude no puede conectarse a GitHub. Para tener tus datos sincronizados con el móvil, usa la web <b>avillar25.github.io/clash-alerter</b>.</div></details>`;
   const on=syncOn();
   return `<details class="panel"><summary>Sincronizar ${NATIVE?"con el PC":"con el móvil"}</summary>
-    ${on?`<div class="small okt">Conectado${SYNC.last?` · última vez ${esc(fmtWhen(SYNC.last))}`:""}</div>${SYNC.err?`<div class="small" style="color:var(--bad,#c0392b)">${esc(SYNC.err)}</div>`:""}
+    ${on?`<div class="small okt">Conectado${SYNC.last?` · última vez ${esc(fmtWhen(SYNC.last))}`:""}</div>${SYNC.err?`<div class="small" style="color:var(--bad,#c0392b)">${esc(SYNC.err)}</div>`:""}${SYNC.cfg.gist?`<div class="small muted">Copia en GitHub: ${esc(String(SYNC.cfg.gist).slice(0,7))} (tiene que salir lo mismo en el móvil y en el PC)</div>`:""}
       <div class="actions"><button class="btn" data-act="syncnow">Sincronizar ahora</button><button class="btn" data-act="syncoff">Desconectar</button></div>`
     :`<div class="small">Pega tu token de GitHub (solo con permiso de Gists) para tener los mismos datos en el móvil y en el PC. Se guarda solo en este dispositivo.</div>
       <label for="gh-token">Token de GitHub<input id="gh-token" type="password" autocomplete="off" placeholder="github_pat_…" value="${esc(S.tokDraft||"")}"></label>
@@ -1039,7 +1047,7 @@ async function initStore(){
     S.ready=true; checkDone(); render(); initNotifications(); checkUpdate(false);
     syncCfgLoad().then(()=>syncNow());
     if(P.App){
-      P.App.addListener("appStateChange", st=>{ if(st.isActive){ checkDone(); render(); syncNotifications(); checkUpdate(false); syncNow(); } });
+      P.App.addListener("appStateChange", st=>{ if(st.isActive){ checkDone(); render(); syncNotifications(); checkUpdate(false); syncNow(); } else syncFlush(); });
       P.App.addListener("appUrlOpen", e=>openFromUrl(e&&e.url));
       if(P.App.getLaunchUrl) P.App.getLaunchUrl().then(r=>openFromUrl(r&&r.url)).catch(()=>{});
       P.App.addListener("backButton", ()=>{ if(document.querySelector("#modal-root .modal")) closeModal(); else if(S.view!=="all"){ S.view="all"; render(); } else P.App.exitApp(); });
@@ -1072,7 +1080,8 @@ async function initStore(){
     S.note=pages?"":"Esta vista no puede sincronizar con tu cuenta de Claude: los datos se guardan solo en este navegador.";
     checkDone(); render();
     syncCfgLoad().then(()=>{ render(); syncNow(); });
-    document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ checkDone(); syncNow(); } });
+    document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ checkDone(); syncNow(); } else syncFlush(); });
+    window.addEventListener("pagehide", syncFlush);
   }
 }
 /* Notificaciones del propio móvil: se reprograman todas cada vez que cambia algo */

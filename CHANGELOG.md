@@ -2,6 +2,11 @@
 
 <!-- La versión más nueva arriba. Cambios pequeños: 1.2, 1.3…  Cambios gordos: 2.0 -->
 
+## v1.7 — 25/11/2026
+- Sincronización: siempre se leen los datos frescos de GitHub (antes el móvil o el navegador podían leer una copia guardada y no ver los cambios del otro lado).
+- Los cambios se suben al momento al salir de la app o cambiar de pestaña, sin esperar.
+- Si hubiera más de una copia en GitHub, todos los dispositivos usan la misma. En Ajustes se ve qué copia usa cada uno.
+
 ## v1.6 — 24/11/2026
 - Sincronización entre el móvil y el PC con un Gist secreto de tu GitHub (Ajustes → Sincronizar).
 - Versión web para el PC en avillar25.github.io/clash-alerter, con los mismos datos que el móvil.
