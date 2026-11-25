@@ -415,10 +415,10 @@ const isLab = w => w==="l"||w==="bl"||w==="p";
 const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 const P = NATIVE ? (window.Capacitor.Plugins||{}) : {};
 /* Versión de la app y repositorio de GitHub de donde salen las actualizaciones (los rellena la compilación) */
-const APP_VERSION = "v1.7";
+const APP_VERSION = "v1.8";
 const UPDATE_REPO = "";
 /* Historial de cambios (de CHANGELOG.md): [{v:"v1.2", date:"…", text:"- …"}] */
-const CHANGELOG = [{"v": "v1.7", "date": "25/11/2026", "text": "- Sincronización: siempre se leen los datos frescos de GitHub (antes el móvil o el navegador podían leer una copia guardada y no ver los cambios del otro lado).\n- Los cambios se suben al momento al salir de la app o cambiar de pestaña, sin esperar.\n- Si hubiera más de una copia en GitHub, todos los dispositivos usan la misma. En Ajustes se ve qué copia usa cada uno."}, {"v": "v1.6", "date": "24/11/2026", "text": "- Sincronización entre el móvil y el PC con un Gist secreto de tu GitHub (Ajustes → Sincronizar).\n- Versión web para el PC en avillar25.github.io/clash-alerter, con los mismos datos que el móvil.\n- Eventos: ahora también se ven los que están en curso (por ejemplo, los Juegos del clan) y cuándo acaban."}, {"v": "v1.5", "date": "24/11/2026", "text": "- Resumen sin la cabecera \"Clash Alerter · Guardado en este navegador\"."}, {"v": "v1.4", "date": "24/11/2026", "text": "- Widgets para la pantalla de inicio: grande (próximas 3 mejoras, trabajadores libres y ayudantes listos) y pequeño (la próxima mejora).\n- Botón \"Añadir widget\" en Ajustes para elegir el tamaño y colocarlo.\n- Al tocar el widget se abre la app en la cuenta de esa mejora."}, {"v": "v1.3", "date": "24/11/2026", "text": "- Icono nuevo: anillo de progreso con un martillo de constructor y un reloj de arena, con contorno cuadrado (adiós al ayuntamiento 15).\n- Pantalla de inicio con el nuevo icono."}, {"v": "v1.2", "date": "24/11/2026", "text": "- Horario de sueño en formato hora (HH:MM): los \":\" se ponen solos y ya no deja escribir más de 4 cifras.\n- \"Horas libre antes de avisar\" limitado a 1–24."}, {"v": "v1.1", "date": "24/11/2026", "text": "Primera versión de la app del móvil.\n- Dos cuentas con aldea principal y base nocturna, importando el JSON del juego.\n- Mejoras en curso por pestañas (constructores, laboratorio, mascotas) y empezar mejoras al momento con el tiempo del juego.\n- No deja empezar mejoras con todos los trabajadores ocupados, salvo que el duende esté libre.\n- Pase de oro, pociones, sopa, carne, torre del reloj (duración por nivel y recarga de 22 h) y ayudantes (también hasta que acabe la mejora).\n- Ayudantes con su nivel, bloqueados o no, y gemas para desbloquearlos y maxearlos.\n- Terminar con gemas o libros, martillos e inventario de objetos mágicos.\n- Plan de mejoras con propuesta recomendada, progreso del ayuntamiento, muros, guardianes y nivel máximo de cada mejora.\n- Equipamiento de héroes en el orden del juego, con el que no tienes marcado como bloqueado.\n- Avisos en el móvil: mejora terminada (y qué toca después según el plan), trabajador libre, ayudantes y torre del reloj listos, y eventos (Liga de guerra, Juegos del clan, asaltos y fin de temporada).\n- Aviso dentro de la app cuando hay una versión nueva, con su historial de cambios."}];
+const CHANGELOG = [{"v": "v1.8", "date": "25/11/2026", "text": "- Sincronización: si cambias la misma cuenta en el móvil y en el PC, ya no se pierde nada. Se juntan las mejoras empezadas, terminadas y canceladas en los dos lados (antes ganaba entera la última versión guardada y podía borrar una mejora).\n- Versión web: en Ajustes → Acerca de se ve la versión y el historial de cambios."}, {"v": "v1.7", "date": "25/11/2026", "text": "- Sincronización: siempre se leen los datos frescos de GitHub (antes el móvil o el navegador podían leer una copia guardada y no ver los cambios del otro lado).\n- Los cambios se suben al momento al salir de la app o cambiar de pestaña, sin esperar.\n- Si hubiera más de una copia en GitHub, todos los dispositivos usan la misma. En Ajustes se ve qué copia usa cada uno."}, {"v": "v1.6", "date": "24/11/2026", "text": "- Sincronización entre el móvil y el PC con un Gist secreto de tu GitHub (Ajustes → Sincronizar).\n- Versión web para el PC en avillar25.github.io/clash-alerter, con los mismos datos que el móvil.\n- Eventos: ahora también se ven los que están en curso (por ejemplo, los Juegos del clan) y cuándo acaban."}, {"v": "v1.5", "date": "24/11/2026", "text": "- Resumen sin la cabecera \"Clash Alerter · Guardado en este navegador\"."}, {"v": "v1.4", "date": "24/11/2026", "text": "- Widgets para la pantalla de inicio: grande (próximas 3 mejoras, trabajadores libres y ayudantes listos) y pequeño (la próxima mejora).\n- Botón \"Añadir widget\" en Ajustes para elegir el tamaño y colocarlo.\n- Al tocar el widget se abre la app en la cuenta de esa mejora."}, {"v": "v1.3", "date": "24/11/2026", "text": "- Icono nuevo: anillo de progreso con un martillo de constructor y un reloj de arena, con contorno cuadrado (adiós al ayuntamiento 15).\n- Pantalla de inicio con el nuevo icono."}, {"v": "v1.2", "date": "24/11/2026", "text": "- Horario de sueño en formato hora (HH:MM): los \":\" se ponen solos y ya no deja escribir más de 4 cifras.\n- \"Horas libre antes de avisar\" limitado a 1–24."}, {"v": "v1.1", "date": "24/11/2026", "text": "Primera versión de la app del móvil.\n- Dos cuentas con aldea principal y base nocturna, importando el JSON del juego.\n- Mejoras en curso por pestañas (constructores, laboratorio, mascotas) y empezar mejoras al momento con el tiempo del juego.\n- No deja empezar mejoras con todos los trabajadores ocupados, salvo que el duende esté libre.\n- Pase de oro, pociones, sopa, carne, torre del reloj (duración por nivel y recarga de 22 h) y ayudantes (también hasta que acabe la mejora).\n- Ayudantes con su nivel, bloqueados o no, y gemas para desbloquearlos y maxearlos.\n- Terminar con gemas o libros, martillos e inventario de objetos mágicos.\n- Plan de mejoras con propuesta recomendada, progreso del ayuntamiento, muros, guardianes y nivel máximo de cada mejora.\n- Equipamiento de héroes en el orden del juego, con el que no tienes marcado como bloqueado.\n- Avisos en el móvil: mejora terminada (y qué toca después según el plan), trabajador libre, ayudantes y torre del reloj listos, y eventos (Liga de guerra, Juegos del clan, asaltos y fin de temporada).\n- Aviso dentro de la app cuando hay una versión nueva, con su historial de cambios."}];
 
 /* ---------- imágenes (se cargan aparte para que la página abra rápido) ---------- */
 let IMG=null;
@@ -538,6 +538,8 @@ function unlockHeroes(acc){
 }
 function hallLevel(acc, vil){ return vil==="bb" ? (acc.bh||0) : (acc.th||0); }
 function maxAt(id, lim, withSc){ const c=CAT[id]; const top=(c.sc&&!withSc)?c.sc:c.d.length; let m=0; for(let L=1; L<=top; L++){ if((c.r[L-1]||0)<=lim) m=L; else break; } return m; }
+/* Mejoras que ya no están en curso (terminadas, canceladas o quitadas al importar): así otro dispositivo no las resucita al sincronizar */
+function goneAdd(acc, ups, k, now, extra){ const g={...(acc.gone||{})}; for(const u of ups) if(u&&u.u) g[u.u]={t:now, k, ...(extra?extra(u):{})}; return g; }
 function addInv(inv,id,lvl,n){ const k=String(id), l=String(lvl); inv[k]=inv[k]||{}; inv[k][l]=(inv[k][l]||0)+n; if(inv[k][l]<=0) delete inv[k][l]; if(!Object.keys(inv[k]).length) delete inv[k]; }
 function maxLvl(inv,id){ const o=inv[String(id)]; if(!o) return 0; return Math.max(0,...Object.keys(o).map(Number)); }
 
@@ -580,7 +582,7 @@ function mergeImport(acc, parsed){
     const sameEnd=Math.abs(o.end-nu.end)<5*60*1000;
     return {...nu, u:o.u, nt: sameEnd ? o.nt : 0};
   });
-  return {...acc, tag:parsed.tag||acc.tag, th:parsed.th, bh:parsed.bh, inv:parsed.inv, ups, eq:parsed.eq, eqOwn:Object.fromEntries(Object.entries(acc.eqOwn||{}).filter(([id,v])=>!v||((parsed.eq||{})[id]||0)<=1)), helpers:parsed.helpers, clock:parsed.clock, cap:acc.capManual?acc.cap:parsed.cap, imp:parsed.imp};
+  return {...acc, gone:goneAdd(acc, old, "i", Date.now()), tag:parsed.tag||acc.tag, th:parsed.th, bh:parsed.bh, inv:parsed.inv, ups, eq:parsed.eq, eqOwn:Object.fromEntries(Object.entries(acc.eqOwn||{}).filter(([id,v])=>!v||((parsed.eq||{})[id]||0)<=1)), helpers:parsed.helpers, clock:parsed.clock, cap:acc.capManual?acc.cap:parsed.cap, imp:parsed.imp};
 }
 function applyDone(acc, now){
   const done=(acc.ups||[]).filter(u=>u.end<=now);
@@ -589,8 +591,8 @@ function applyDone(acc, now){
   for(const u of done) addInv(inv,u.id,u.to,1);
   let th=acc.th, bh=acc.bh;
   for(const u of done){ if(u.id===ID_TH) th=Math.max(th,u.to); if(u.id===ID_BH) bh=Math.max(bh,u.to); }
-  const hist=[...done.map(u=>({id:u.id,to:u.to,end:u.end,m:"time"})), ...(acc.done||[])].slice(0,20);
-  return {...acc, inv, th, bh, ups:acc.ups.filter(u=>u.end>now), done:hist, _justDone:done};
+  const hist=[...done.map(u=>({id:u.id,to:u.to,end:u.end,m:"time",u:u.u})), ...(acc.done||[])].slice(0,20);
+  return {...acc, inv, th, bh, ups:acc.ups.filter(u=>u.end>now), done:hist, gone:goneAdd(acc, done, "f", now, u=>({end:u.end, m:"time"})), _justDone:done};
 }
 /* Terminar una mejora antes de tiempo, como en el juego: con gemas o con el libro que toque */
 const FINISH = {hb:["Martillo de construcción","mi_hb"], hh:["Martillo de héroes","mi_hh"], hf:["Martillo de pelea","mi_hf"], hs:["Martillo de hechizos","mi_hs"], gems:["Gemas","mi_gems"], build:["Libro de construcción","mi_build"], hero:["Libro de héroes","mi_hero"], fight:["Libro de pelea","mi_fight"], spell:["Libro de hechizos","mi_spell"], all:["Libro de todo","mi_all"], time:["Tiempo cumplido",null]};
@@ -644,8 +646,8 @@ function finishUpgrade(acc, u, m, now){
   addInv(inv,up.id,up.to,1);
   let th=acc.th, bh=acc.bh;
   if(up.id===ID_TH) th=Math.max(th,up.to); if(up.id===ID_BH) bh=Math.max(bh,up.to);
-  const hist=[{id:up.id,to:up.to,end:now,m,saved:Math.max(0,up.end-now)}, ...(acc.done||[])].slice(0,20);
-  return {...acc, inv, th, bh, ups:acc.ups.filter(x=>x.u!==u), done:hist};
+  const hist=[{id:up.id,to:up.to,end:now,m,saved:Math.max(0,up.end-now),u:up.u}, ...(acc.done||[])].slice(0,20);
+  return {...acc, inv, th, bh, ups:acc.ups.filter(x=>x.u!==u), done:hist, gone:goneAdd(acc, [up], "f", now, ()=>({end:now, m}))};
 }
 /* Boosts como en el juego: aceleran las mejoras en curso un tiempo a una velocidad x */
 const BOOSTS = {
@@ -715,7 +717,7 @@ function cancelUpgrade(acc, u){
   const up=(acc.ups||[]).find(x=>x.u===u); if(!up) return acc;
   const inv=JSON.parse(JSON.stringify(acc.inv||{}));
   if(up.from>0) addInv(inv,up.id,up.from,1);
-  return {...acc, inv, ups:acc.ups.filter(x=>x.u!==u)};
+  return {...acc, inv, ups:acc.ups.filter(x=>x.u!==u), gone:goneAdd(acc, [up], "c", Date.now())};
 }
 function busy(acc, now){ const b={b:0,l:0,p:0,bb:0,bl:0}; for(const u of acc.ups||[]) if(u.end>now&&!u.gob) b[u.w]=(b[u.w]||0)+1; return b; }
 /* Constructor duende / investigador duende: trabajador extra que se usa pagando gemas, uno de cada */
@@ -942,6 +944,36 @@ async function syncFindGist(recheck){
   const g=await gh("/gists",{method:"POST", body:JSON.stringify({description:SYNC_DESC, public:false, files:{[SYNC_FILE]:{content:JSON.stringify({v:1,docs:{}})}}})});
   SYNC.cfg.gist=g.id; await syncCfgSave(); return g.id;
 }
+/* La misma cuenta cambiada en los dos dispositivos: se parte de la versión más nueva y se le
+   suman las mejoras que se empezaron, terminaron o cancelaron en la otra. Así no se pierde nada. */
+function mergeAcc(a, b){
+  const [n,o]=((b._mt||0)>(a._mt||0))?[b,a]:[a,b];
+  const out=JSON.parse(JSON.stringify(n)); out.inv=out.inv||{}; out.ups=out.ups||[];
+  const og=o.gone||{}, ng=n.gone||{};
+  // 1) Lo que la otra terminó, canceló o quitó al importar, y en esta sigue en curso
+  for(const up of [...out.ups]){
+    const g=og[up.u]; if(!g || ng[up.u]) continue;
+    out.ups=out.ups.filter(x=>x.u!==up.u);
+    if(g.k==="c"){ if(up.from>0) addInv(out.inv,up.id,up.from,1); }
+    else if(g.k==="f"){
+      addInv(out.inv,up.id,up.to,1);
+      if(up.id===ID_TH) out.th=Math.max(out.th||0,up.to); if(up.id===ID_BH) out.bh=Math.max(out.bh||0,up.to);
+      out.done=[{id:up.id,to:up.to,end:g.end||up.end,m:g.m||"time",u:up.u}, ...(out.done||[])].slice(0,20);
+    }
+  }
+  // 2) Lo que solo se empezó en la otra
+  const have=new Set(out.ups.map(u=>u.u));
+  for(const up of (o.ups||[])){
+    if(!up.u || have.has(up.u) || ng[up.u] || og[up.u]) continue;
+    // datos de versiones anteriores sin registro: si ya figura como terminada aquí, no se vuelve a poner
+    if((n.done||[]).some(d=>d.u===up.u || (!d.u && d.id===up.id && d.to===up.to))) continue;
+    out.ups.push(up); if(up.from>0) addInv(out.inv,up.id,up.from,-1);
+  }
+  const cut=Date.now()-60*86400000, gone={...og, ...ng};
+  out.gone=Object.fromEntries(Object.entries(gone).filter(([k,v])=>v&&v.t>cut));
+  out._mt=Math.max(n._mt||0, o._mt||0);
+  return out;
+}
 function syncMerge(local, remote){
   const del={...(remote[SYNC_DEL]||{}), ...(local[SYNC_DEL]||{})};
   for(const [k,v] of Object.entries(remote[SYNC_DEL]||{})) del[k]=Math.max(v, del[k]||0);
@@ -950,6 +982,7 @@ function syncMerge(local, remote){
     if(k===SYNC_DEL) continue;
     const a=local[k], b=remote[k];
     let w = a===undefined ? b : b===undefined ? a : ((b&&b._mt||0) > (a&&a._mt||0) ? b : a);
+    if(k.startsWith("acc_") && a && b && typeof a==="object" && typeof b==="object" && JSON.stringify(a)!==JSON.stringify(b)) w=mergeAcc(a,b);
     if(w===undefined) continue;
     if(del[k] && del[k] >= ((w&&w._mt)||0)) continue;     // borrado después del último cambio
     out[k]=w;
@@ -1771,6 +1804,10 @@ function settingsPanel(){
     </div>
     <div class="small muted">El horario de sueño lo usa el plan para no proponerte empezar mejoras mientras duermes. Pon la misma hora en los dos campos para desactivarlo.</div>
     <div class="actions"><button class="btn" data-act="savetopic">Guardar ajustes</button></div>
+  </details>
+  <details class="panel"><summary>Acerca de</summary>
+    <div class="small">Clash Alerter ${esc(APP_VERSION)}</div>
+    ${changelogHtml()}
   </details>`;
 }
 function onboarding(){

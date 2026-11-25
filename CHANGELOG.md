@@ -2,6 +2,10 @@
 
 <!-- La versión más nueva arriba. Cambios pequeños: 1.2, 1.3…  Cambios gordos: 2.0 -->
 
+## v1.8 — 25/11/2026
+- Sincronización: si cambias la misma cuenta en el móvil y en el PC, ya no se pierde nada. Se juntan las mejoras empezadas, terminadas y canceladas en los dos lados (antes ganaba entera la última versión guardada y podía borrar una mejora).
+- Versión web: en Ajustes → Acerca de se ve la versión y el historial de cambios.
+
 ## v1.7 — 25/11/2026
 - Sincronización: siempre se leen los datos frescos de GitHub (antes el móvil o el navegador podían leer una copia guardada y no ver los cambios del otro lado).
 - Los cambios se suben al momento al salir de la app o cambiar de pestaña, sin esperar.
