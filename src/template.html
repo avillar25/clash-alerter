@@ -58,6 +58,9 @@ h1{font-size:26px;line-height:1.1} h2{font-size:20px} h3{font-size:15px}
 .tabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0}
 .tab{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:6px 13px 6px 8px;border-radius:999px;font:700 14px var(--body);cursor:pointer;white-space:nowrap}
 .tab.plain{padding:6px 13px}
+.wtabs.static .wtab{cursor:default}
+.check.sumchk{font-size:12px;font-weight:600;margin:0 0 0 auto;padding:4px 9px;border:1px solid var(--line,rgba(0,0,0,.15));border-radius:8px;white-space:nowrap;align-self:center}
+.check.sumchk input{width:15px;height:15px}
 .navrow{display:flex;align-items:center;gap:6px}.navrow .tabs{flex:1;min-width:0}
 .tab.gear{padding:6px;width:38px;height:38px;justify-content:center;flex:none}
 .tab.gear svg{width:22px;height:22px;display:block}
@@ -1406,7 +1409,7 @@ function upRow(acc, up, now, showAcc){
 }
 /* Pestañas de "En curso" como en el juego: constructores, laboratorio, mascotas */
 const WTABS = {h:[["b","Constructores",1000015],["l","Laboratorio",1000007],["p","Mascotas",1000068]], bb:[["bb","Constructores",1000015],["bl","Laboratorio estelar",1000046]]};
-function upsTabsHtml(key, vil, pairs, now, showAcc, accForCap){
+function upsTabsHtml(key, vil, pairs, now, showAcc, accForCap, onlyTabs){
   const accs=accForCap?[accForCap]:[...new Set(pairs.map(p=>p[0]))];
   const anyPet=accForCap?hasPetHouse(accForCap):accounts().some(hasPetHouse);
   const tabs=WTABS[vil].filter(([w])=>w!=="p"||anyPet||pairs.some(([a,u])=>u.w==="p"));
@@ -1426,8 +1429,9 @@ function upsTabsHtml(key, vil, pairs, now, showAcc, accForCap){
   };
   const content=(cur)=>{ const s=section(cur); return `${s.boostBar}
     ${s.list.length?`<div class="list">${s.list.map(([a,u])=>upRow(a,u,now,showAcc)).join("")}</div>`:`<div class="empty">${esc(s.emptyMsg)}</div>`}`; };
-  return `<div class="wtabs" role="tablist">${tabs.map(([w,n,id])=>`<button class="wtab" role="tab" aria-selected="${w===cur0}" data-act="uptab" data-k="${esc(key)}" data-w="${w}">${lvlImg(id)}<span>${esc(n)}</span><b>${cnt(w)}</b>${key.startsWith("all:")?(()=>{ const nx=pairs.filter(([a,u])=>u.w===w&&u.end>now).sort((x,y)=>x[1].end-y[1].end)[0]; return `<small class="wnext">${nx?"Acaba "+esc(fmtWhen(nx[1].end)):"Libre"}</small>`; })():""}</button>`).join("")}</div>
-    ${content(cur0)}`;
+  const tag=onlyTabs?"div":"button";
+  return `<div class="wtabs ${onlyTabs?"static":""}" ${onlyTabs?"":'role="tablist"'}>${tabs.map(([w,n,id])=>`<${tag} class="wtab" ${onlyTabs?"":`role="tab" aria-selected="${w===cur0}" data-act="uptab" data-k="${esc(key)}" data-w="${w}"`}>${lvlImg(id)}<span>${esc(n)}</span><b>${cnt(w)}</b>${key.startsWith("all:")?(()=>{ const nx=pairs.filter(([a,u])=>u.w===w&&u.end>now).sort((x,y)=>x[1].end-y[1].end)[0]; return `<small class="wnext">${nx?"Acaba "+esc(fmtWhen(nx[1].end)):"Libre"}</small>`; })():""}</${tag}>`).join("")}</div>
+    ${onlyTabs?"":content(cur0)}`;
 }
 function ringSvg(p, col){
   const r=38, C=2*Math.PI*r, v=Math.max(0,Math.min(1,p));
@@ -1785,9 +1789,10 @@ function renderAll(now){
   const sect=vil=>{
     const all=[]; accs.forEach(a=>(a.ups||[]).filter(u=>vilOf(u.id)===vil).forEach(u=>all.push([a,u]))); all.sort((x,y)=>x[1].end-y[1].end);
     return `<div class="panel ${vil==="bb"?"night":""}">
-      <div class="panel-head"><div class="vil-title"><h2>${esc(VIL[vil].name)}</h2><span class="pill ${vil}">${all.length} en curso</span></div></div>
+      <div class="panel-head"><div class="vil-title"><h2>${esc(VIL[vil].name)}</h2><span class="pill ${vil}">${all.length} en curso</span></div>
+        <label class="check sumchk" for="sumlist-${vil}"><input id="sumlist-${vil}" class="sumlist" type="checkbox" ${settings().sumList?"checked":""}> Ver lista</label></div>
       ${occupancyHtml(accs,vil,now)}
-      ${upsTabsHtml("all:"+vil, vil, all, now, accs.length>1, accs.length===1?accs[0]:null)}
+      ${upsTabsHtml("all:"+vil, vil, all, now, accs.length>1, accs.length===1?accs[0]:null, !settings().sumList)}
     </div>`;
   };
   const card=a=>{
@@ -2270,6 +2275,7 @@ document.addEventListener("input",ev=>{
 });
 document.addEventListener("change",ev=>{
   const t=ev.target;
+  if(t.classList && t.classList.contains("sumlist")){ save("settings", {...settings(), sumList:t.checked}); toast(t.checked?"El Resumen mostrará las mejoras en curso.":"El Resumen ya no muestra las mejoras en curso."); return; }
   if(t.dataset && t.dataset.boost){
     const acc=accounts().find(a=>a._id===t.dataset.acc); if(!acc) return;
     saveAcc({...acc, gp:{...(acc.gp||{}), [t.dataset.boost]:+t.value}});

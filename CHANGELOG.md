@@ -2,6 +2,9 @@
 
 <!-- La versión más nueva arriba. Cambios pequeños: 1.2, 1.3…  Cambios gordos: 2.0 -->
 
+## v1.13 — 27/11/2026
+- Resumen más corto: ya no muestra la lista de mejoras en curso, solo los trabajadores y cuándo acaba la siguiente. Si la quieres ver, marca la casilla "Ver lista" en cada aldea del Resumen.
+
 ## v1.12 — 27/11/2026
 - Ayudantes (aprendiz, ayudante de laboratorio, alquimista): botón para poner cuánto les falta para estar disponibles ("No está disponible") o marcarlos como listos ("Ya está disponible"), igual que la torre del reloj.
 
