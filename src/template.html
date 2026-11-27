@@ -1217,7 +1217,6 @@ function widgetPayload(now){
     const ends={}; for(const u of a.ups||[]) if(!u.gob&&u.end>now) (ends[u.w]=ends[u.w]||[]).push(u.end);
     const ready=[];
     for(const [id,h] of Object.entries(a.helpers||{})) if(HELPERS[id]&&h&&(h.lvl>0||!HELPER_REQ[id])) ready.push({t:HELPERS[id]+" listo", e:h.end||0});
-    if(a.clock!==undefined||maxLvl(a.inv||{},1000039)) ready.push({t:"Torre del reloj lista", e:a.clock||0});
     return {id:a._id, name:a.name, color:accColor(a), cap:a.cap||{}, ends,
       ups:(a.ups||[]).filter(u=>u.end>now).map(u=>({n:`${CAT[u.id]?CAT[u.id].n:(u.n||"Mejora")} ${stepTxt(u.id,u.from)}`, e:u.end})),
       ready};

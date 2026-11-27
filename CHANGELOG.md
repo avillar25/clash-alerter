@@ -2,6 +2,9 @@
 
 <!-- La versión más nueva arriba. Cambios pequeños: 1.2, 1.3…  Cambios gordos: 2.0 -->
 
+## v1.15 — 27/11/2026
+- Widget: ya no muestra la torre del reloj.
+
 ## v1.14 — 27/11/2026
 - Resumen: el texto "Acaba hoy a las…" de las pestañas se ve nítido (antes salía borroso en la aldea principal).
 
