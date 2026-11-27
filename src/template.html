@@ -1236,6 +1236,38 @@ async function syncNotifications(){
   }catch(e){ S.notifErr=String(e&&e.message||e); }
   syncing=false; if(syncAgain){ syncAgain=false; syncNotifications(); }
 }
+/* Avisos en el ordenador: notificaciones del navegador mientras la web está abierta (solo en este navegador, no se sincroniza) */
+const WN={pend:[], key:"web-notif", firedKey:"web-notif-fired"};
+function wnSupported(){ return !NATIVE && typeof Notification!=="undefined"; }
+function wnOn(){ try{ return wnSupported() && localStorage.getItem(WN.key)==="1" && Notification.permission==="granted"; }catch(e){ return false; } }
+function wnShow(title, body, tag){
+  try{ const n=new Notification(title, {body, tag, icon:(document.querySelector('link[rel="apple-touch-icon"]')||{}).href}); n.onclick=()=>{ window.focus(); n.close(); }; }catch(e){}
+}
+function wnTick(){
+  if(!wnOn() || !S.ready) { WN.pend=[]; return; }
+  const now=Date.now(); let fired={};
+  try{ fired=JSON.parse(localStorage.getItem(WN.firedKey)||"{}"); }catch(e){}
+  for(const x of WN.pend){
+    const k=x.id+":"+x.at;
+    if(x.at<=now && x.at>now-15*60000 && !fired[k]){ fired[k]=now; wnShow(x.title, x.body, String(x.id)); }
+  }
+  for(const k in fired) if(fired[k]<now-2*86400000) delete fired[k];
+  try{ localStorage.setItem(WN.firedKey, JSON.stringify(fired)); }catch(e){}
+  // lo que viene: se calcula antes de que acabe, porque al acabar la mejora deja de estar en curso
+  WN.pend=plannedNotifications(now).filter(x=>x.at>now-60000).concat(WN.pend.filter(x=>x.at>now-15*60000));
+  const seen=new Set(); WN.pend=WN.pend.filter(x=>{ const k=x.id+":"+x.at; if(seen.has(k)) return false; seen.add(k); return true; });
+}
+function wnPanel(){
+  if(!wnSupported()) return "";
+  const perm=Notification.permission, want=(()=>{ try{ return localStorage.getItem(WN.key)==="1"; }catch(e){ return false; } })();
+  const on=want&&perm==="granted";
+  return `<details class="panel" ${want&&!on?"open":""}>
+    <summary>Avisos en este ordenador</summary>
+    <div class="banner ${on?"okb":""}">${on?"Avisos activados en este navegador.":perm==="denied"?"El navegador tiene bloqueados los avisos de esta web. Actívalos en el candado de la barra de direcciones → Notificaciones → Permitir.":"Los avisos están desactivados en este ordenador."}</div>
+    <div class="small muted">Te avisa de lo mismo que el móvil (mejoras terminadas, trabajadores libres, eventos), pero solo mientras tengas esta web abierta, aunque sea en otra pestaña o minimizada. Se activa por separado en cada ordenador.</div>
+    <div class="actions">${on?`<button class="btn" data-act="wntest">Probar aviso</button><button class="btn" data-act="wnoff">Desactivar</button>`:perm==="denied"?"":`<button class="btn primary" data-act="wnon">Activar avisos</button>`}</div>
+  </details>`;
+}
 async function testNotification(){
   const LN=P.LocalNotifications; if(!LN) return;
   await LN.schedule({notifications:[{id:999, title:"⚒️ Prueba de Clash Alerter", body:"Si ves esto, los avisos funcionan.", channelId:"mejoras", schedule:{at:new Date(Date.now()+5000), allowWhileIdle:true}}]});
@@ -1816,7 +1848,7 @@ function settingsPanel(){
     ${changelogHtml()}
     <div class="small muted">© 2026 avillar25. Todos los derechos reservados. Contenido de fans no oficial: no está afiliado, respaldado ni patrocinado por Supercell. Más información en www.supercell.com/fan-content-policy</div>
   </details>`;
-  return syncPanel()+backupPanel()+`<details class="panel">
+  return wnPanel()+syncPanel()+backupPanel()+`<details class="panel">
     <summary>Plan y horario</summary>
     <div class="small">Los avisos al móvil llegan con la app Clash Alerter instalada. Aquí en la web solo se usa el horario de sueño para el plan.</div>
     <label class="check" for="idleon"><input id="idleon" type="checkbox" ${idleOn?"checked":""}> Avisarme si un trabajador sigue libre</label>
@@ -1910,6 +1942,7 @@ setInterval(()=>{
   if(finished && S.ready) checkDone();
 },1000);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden && S.ready){ checkDone(); render(); } });
+if(!NATIVE) setInterval(wnTick, 20000);
 document.addEventListener("click",ev=>{
   const el=ev.target.closest("[data-act]"); if(!el) return;
   const act=el.dataset.act;
@@ -1959,6 +1992,14 @@ document.addEventListener("click",ev=>{
     S.clockEdit=null; const at=now+Math.round(h*3600000);
     saveAcc({...acc, clock:at}); toast(`Torre del reloj en recarga: lista ${fmtWhen(at)}.`); return;
   }
+  if(act==="wnon"){
+    Notification.requestPermission().then(p=>{ try{ localStorage.setItem(WN.key, p==="granted"?"1":"0"); }catch(e){}
+      if(p==="granted"){ WN.pend=[]; wnTick(); toast("Avisos activados en este ordenador."); } else toast("El navegador no ha dado permiso para los avisos.");
+      render(); });
+    return;
+  }
+  if(act==="wnoff"){ try{ localStorage.setItem(WN.key,"0"); }catch(e){} WN.pend=[]; render(); toast("Avisos desactivados en este ordenador."); return; }
+  if(act==="wntest"){ toast("Te llegará un aviso de prueba en 5 segundos"); setTimeout(()=>wnShow("⚒️ Prueba de Clash Alerter","Si ves esto, los avisos funcionan en este ordenador.","test"),5000); return; }
   if(act==="gobswap"){ gobSwap(el.dataset.acc, el.dataset.u); return; }
   if(act==="start"){
     // Se empieza al momento con el tiempo del juego; si hace falta, se cambia luego con "Ajustar tiempo"
