@@ -2,6 +2,12 @@
 
 <!-- La versión más nueva arriba. Cambios pequeños: 1.2, 1.3…  Cambios gordos: 2.0 -->
 
+## v1.9 — 27/11/2026
+- Botón en cada mejora de la aldea para cambiar quién la hace: "Era el duende" / "Era un constructor".
+- Si la app pone una mejora con el constructor duende, el aviso trae el botón "Era un constructor" para corregirlo al momento.
+- Torre del reloj: botón para marcarla como "No está disponible" (pones cuánto le falta) o "Ya está disponible".
+- Web: icono de la app en la pestaña del navegador.
+
 ## v1.8 — 25/11/2026
 - Sincronización: si cambias la misma cuenta en el móvil y en el PC, ya no se pierde nada. Se juntan las mejoras empezadas, terminadas y canceladas en los dos lados (antes ganaba entera la última versión guardada y podía borrar una mejora).
 - Versión web: en Ajustes → Acerca de se ve la versión y el historial de cambios.
