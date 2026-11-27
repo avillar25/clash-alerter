@@ -58,6 +58,11 @@ h1{font-size:26px;line-height:1.1} h2{font-size:20px} h3{font-size:15px}
 .tabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0}
 .tab{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:6px 13px 6px 8px;border-radius:999px;font:700 14px var(--body);cursor:pointer;white-space:nowrap}
 .tab.plain{padding:6px 13px}
+.navrow{display:flex;align-items:center;gap:6px}.navrow .tabs{flex:1;min-width:0}
+.tab.gear{padding:6px;width:38px;height:38px;justify-content:center;flex:none}
+.tab.gear svg{width:22px;height:22px;display:block}
+.top .tab.gear{margin-left:auto}
+.setnote{margin:0 0 4px;font-size:13px}
 .tab img{width:24px;height:24px;object-fit:contain}
 .tab[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 /* tarjetas */
@@ -1720,7 +1725,7 @@ function renderAcc(acc, now){
   ${planHtml(acc,vil,now)}
   ${progressHtml(acc,vil,now)}
   ${wallsHtml(acc,vil)}
-  ${accSettings(acc)}`;
+  ${Object.keys(acc.inv||{}).length?"":accSettings(acc)}`;
 }
 /* ¿Está todo el mundo trabajando? Ocupados / total por tipo y quién tiene huecos */
 function occupancyHtml(accs, vil, now){
@@ -1789,7 +1794,15 @@ function renderAll(now){
   return `
   ${sect("h")}
   ${sect("bb")}
-  ${eventsHtml(now)}
+  ${eventsHtml(now)}`;
+}
+const GEAR_SVG=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`;
+function gearBtn(){ return `<button class="tab plain gear" aria-pressed="${S.view==="settings"}" data-act="view" data-v="settings" aria-label="Ajustes" title="Ajustes">${GEAR_SVG}</button>`; }
+/* Pantalla de ajustes: todo lo que antes estaba al final del Resumen y de cada cuenta */
+function renderSettings(){
+  const accs=accounts();
+  return `${accs.length?`<div class="acc-label" style="margin:4px 0 6px">Cuentas · importar JSON del juego</div>${accs.map(a=>accSettings(a)).join("")}`:""}
+  <div class="acc-label" style="margin:14px 0 6px">General</div>
   ${settingsPanel()}`;
 }
 function accSettings(acc){
@@ -1881,23 +1894,23 @@ function onboarding(){
 }
 function render(){
   const app=document.getElementById("app");
-  const theme=(S.view!=="all"&&S.view!=="new"&&S.vil==="bb")?"night":"wood";
+  const theme=(S.view!=="all"&&S.view!=="new"&&S.view!=="settings"&&S.vil==="bb")?"night":"wood";
   if(document.body.className!==theme) document.body.className=theme;
   if(!S.ready) return;
   const now=Date.now(), accs=accounts();
-  if(S.view!=="all" && S.view!=="new" && !curAcc()) S.view="all";
+  if(S.view!=="all" && S.view!=="new" && S.view!=="settings" && !curAcc()) S.view="all";
   const focus=document.activeElement && document.activeElement.id; const sel=focus&&document.activeElement.selectionStart;
   const openDetails=[...document.querySelectorAll("details[open] summary")].map(s=>s.textContent);
   app.innerHTML=`
-  ${NATIVE?"":`<div class="top"><div><h1>Clash Alerter</h1><div class="sub">${S.mode==="db"?"Sincronizado entre tus dispositivos":"Guardado en este navegador"}</div></div></div>`}
+  ${NATIVE?"":`<div class="top"><div><h1>Clash Alerter</h1><div class="sub">${S.mode==="db"?"Sincronizado entre tus dispositivos":"Guardado en este navegador"}</div></div>${accs.length?gearBtn():""}</div>`}
   ${S.note?`<div class="banner">${esc(S.note)}</div>`:""}
   ${updateBanner()}
-  ${accs.length?`<div class="tabs" role="toolbar" aria-label="Cuentas">
+  ${accs.length?`<div class="navrow"><div class="tabs" role="toolbar" aria-label="Cuentas">
     <button class="tab plain" aria-pressed="${S.view==="all"}" data-act="view" data-v="all">Resumen</button>
     ${accs.map(a=>`<button class="tab acc" style="--ac:${accColor(a)}" aria-pressed="${S.view===a._id}" data-act="view" data-v="${esc(a._id)}">${img("big_"+ID_TH,a.th||1)}${esc(a.name)}</button>`).join("")}
     <button class="tab plain" aria-pressed="${S.view==="new"}" data-act="view" data-v="new">+ Cuenta</button>
-  </div>`:""}
-  ${S.view==="new"?onboarding():S.view==="all"?renderAll(now):renderAcc(curAcc(),now)}`;
+  </div>${NATIVE?gearBtn():""}</div>`:""}
+  ${S.view==="new"?onboarding():S.view==="settings"?renderSettings():S.view==="all"?renderAll(now):renderAcc(curAcc(),now)}`;
   document.querySelectorAll("details summary").forEach(s=>{ if(openDetails.includes(s.textContent)) s.parentElement.open=true; });
   if(focus){ const el=document.getElementById(focus); if(el){ el.focus(); try{ if(sel!=null) el.setSelectionRange(sel,sel); }catch(e){} } }
 }

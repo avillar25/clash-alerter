@@ -2,6 +2,10 @@
 
 <!-- La versión más nueva arriba. Cambios pequeños: 1.2, 1.3…  Cambios gordos: 2.0 -->
 
+## v1.10 — 27/11/2026
+- Nuevo botón de ajustes (rueda dentada) arriba a la derecha: abre una pantalla con todos los ajustes, los de cada cuenta (importar JSON) y los generales. Ya no hay que bajar hasta el final.
+- Web: avisos del navegador mientras la web está abierta (Ajustes → Avisos en este ordenador).
+
 ## v1.9 — 27/11/2026
 - Botón en cada mejora de la aldea para cambiar quién la hace: "Era el duende" / "Era un constructor".
 - Si la app pone una mejora con el constructor duende, el aviso trae el botón "Era un constructor" para corregirlo al momento.
