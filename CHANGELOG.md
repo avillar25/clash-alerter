@@ -2,6 +2,9 @@
 
 <!-- La versión más nueva arriba. Cambios pequeños: 1.2, 1.3…  Cambios gordos: 2.0 -->
 
+## v1.12 — 27/11/2026
+- Ayudantes (aprendiz, ayudante de laboratorio, alquimista): botón para poner cuánto les falta para estar disponibles ("No está disponible") o marcarlos como listos ("Ya está disponible"), igual que la torre del reloj.
+
 ## v1.11 — 27/11/2026
 - Al volver a tocar la rueda de ajustes se cierran y vuelves a la pantalla donde estabas.
 

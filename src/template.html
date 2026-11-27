@@ -1345,6 +1345,12 @@ function workersHtml(acc, vil, now){
   }).join("")}${vil==="h"?["b","l"].map(w=>{ const g=goblinUp(acc,w,now);
     return `<div class="wk gobwk ${g?"":"free"}"><span class="k">${img("goblin_builder",0,"bi")} ${esc(GOBLIN[w])}</span><span class="v">${g?`Libre ${esc(fmtWhen(g.end))}`:"Disponible (gemas)"}</span></div>`; }).join(""):""}</div>`;
 }
+/* Botón para corregir a mano si algo está disponible o cuánto le falta (torre del reloj, ayudantes) */
+function availCtl(acc, k, ready, defH){
+  const a=esc(acc._id), key=acc._id+":"+k;
+  if(S.avEdit===key) return `<span class="clkedit"><label for="av-${a}-${esc(k)}">Disponible dentro de (hh:mm)<input id="av-${a}-${esc(k)}" class="hhmm" type="text" inputmode="numeric" maxlength="5" placeholder="${hhmm(defH)}" value=""></label><button class="btn small primary" data-act="avset" data-acc="${a}" data-k="${esc(k)}">Guardar</button><button class="btn small" data-act="avedit" data-acc="" data-k="">Cancelar</button></span>`;
+  return `<button class="btn small" data-act="${ready?"avedit":"avready"}" data-acc="${a}" data-k="${esc(k)}">${ready?"No está disponible":"Ya está disponible"}</button>`;
+}
 function helpersHtml(acc, vil, now){
   const out=[];
   if(vil==="h"){
@@ -1361,15 +1367,13 @@ function helpersHtml(acc, vil, now){
         : toMax?`<span class="small">Siguiente nivel: ${gem(helperGems(id,lv,lv+1))} · al máximo (nivel ${max}): ${gem(toMax)}</span>`:(HELPER_REQ[id]?`<span class="small">Al máximo con tu ayuntamiento</span>`:"");
       const onU=!locked&&h.on&&!ready?(acc.ups||[]).find(u=>u.u===h.on&&u.end>now):null;
       const st=locked?"":(ready?"Disponible":`<span class="num" data-end="${h.end}" data-plain="1">${fmtCountdown(h.end-now)}</span>`);
-      out.push(`<div class="hp ${locked?"locked":ready?"ready":""}">${img("h_"+id,0)}<div><b>${esc(HELPERS[id])}</b>${sel}${onU?`<span class="small">En ${esc(CAT[onU.id].n)} hasta que acabe</span>`:""}${st}${cost}</div></div>`);
+      out.push(`<div class="hp ${locked?"locked":ready?"ready":""}">${img("h_"+id,0)}<div><b>${esc(HELPERS[id])}</b>${sel}${onU?`<span class="small">En ${esc(CAT[onU.id].n)} hasta que acabe</span>`:""}${st}${cost}${locked?"":availCtl(acc, id, ready, 23)}</div></div>`);
     }
   }
   if(vil==="bb" && (acc.clock || maxLvl(acc.inv||{},1000039))){
     const ready=!(acc.clock>now);   // sin dato de recarga (cuentas importadas antes de esta función) = disponible
-    const a=esc(acc._id), editing=S.clockEdit===acc._id;
     out.push(`<div class="hp ${ready?"ready":""}">${img("clock",0)}<div><b>Torre del reloj</b>${ready?`Disponible · ${clockMinutes(acc)} min`:`<span class="num" data-end="${acc.clock}" data-plain="1">${fmtCountdown(acc.clock-now)}</span>`}
-      ${editing?`<span class="clkedit"><label for="clk-${a}">Lista dentro de (hh:mm)<input id="clk-${a}" class="hhmm" type="text" inputmode="numeric" maxlength="5" placeholder="${hhmm(CLOCK_CD_H)}" value=""></label><button class="btn small primary" data-act="clockset" data-acc="${a}">Guardar</button><button class="btn small" data-act="clockedit" data-acc="">Cancelar</button></span>`
-        :`<button class="btn small" data-act="${ready?"clockedit":"clockready"}" data-acc="${a}">${ready?"No está disponible":"Ya está disponible"}</button>`}</div></div>`);
+      ${availCtl(acc, "clock", ready, CLOCK_CD_H)}</div></div>`);
   }
   return out.length?`<div><div class="acc-label" style="margin-bottom:6px">${vil==="bb"?"Torre del reloj":"Ayudantes · toca el nivel para cambiarlo"}</div><div class="helpers">${out.join("")}</div></div>`:"";
 }
@@ -1998,24 +2002,22 @@ document.addEventListener("click",ev=>{
     if(j<0||j>=plan.length) return;
     [plan[i],plan[j]]=[plan[j],plan[i]]; saveAcc({...acc, plan}); return;
   }
-  if(act==="clockedit"){ S.clockEdit=el.dataset.acc||null; render(); if(S.clockEdit){ const i=document.getElementById("clk-"+S.clockEdit); if(i) i.focus(); } return; }
-  if(act==="clockready"||act==="clockset"){
+  if(act==="avedit"){ S.avEdit=el.dataset.acc?el.dataset.acc+":"+el.dataset.k:null; render(); if(S.avEdit){ const i=document.getElementById("av-"+el.dataset.acc+"-"+el.dataset.k); if(i) i.focus(); } return; }
+  if(act==="avready"||act==="avset"){
     const acc=accounts().find(a=>a._id===el.dataset.acc); if(!acc) return;
-    const now=Date.now();
-    if(act==="clockready"){ saveAcc({...acc, clock:now-1000}); toast("Torre del reloj marcada como disponible."); return; }
-    const i=document.getElementById("clk-"+acc._id), h=parseHHMM(i&&i.value, CLOCK_CD_H);
-    if(!(h>0)){ toast("Pon cuánto le falta, por ejemplo 05:30."); return; }
-    S.clockEdit=null; const at=now+Math.round(h*3600000);
-    saveAcc({...acc, clock:at}); toast(`Torre del reloj en recarga: lista ${fmtWhen(at)}.`); return;
-  }
-  if(act==="wnon"){
-    Notification.requestPermission().then(p=>{ try{ localStorage.setItem(WN.key, p==="granted"?"1":"0"); }catch(e){}
-      if(p==="granted"){ WN.pend=[]; wnTick(); toast("Avisos activados en este ordenador."); } else toast("El navegador no ha dado permiso para los avisos.");
-      render(); });
+    const k=el.dataset.k, now=Date.now(), name=k==="clock"?"Torre del reloj":(HELPERS[k]||"Ayudante");
+    let at=now-1000;
+    if(act==="avset"){
+      const i=document.getElementById("av-"+acc._id+"-"+k), h=parseHHMM(i&&i.value, k==="clock"?CLOCK_CD_H:23);
+      if(!(h>0)){ toast("Pon cuánto le falta, por ejemplo 05:30."); return; }
+      at=now+Math.round(h*3600000);
+    }
+    S.avEdit=null;
+    if(k==="clock") saveAcc({...acc, clock:at});
+    else { const hs={...(acc.helpers||{})}, h={...(hs[k]||{lvl:1})}; h.end=at; if(act==="avready") delete h.on; hs[k]=h; saveAcc({...acc, helpers:hs}); }
+    toast(act==="avready"?`${name}: disponible.`:`${name}: disponible ${fmtWhen(at)}.`);
     return;
   }
-  if(act==="wnoff"){ try{ localStorage.setItem(WN.key,"0"); }catch(e){} WN.pend=[]; render(); toast("Avisos desactivados en este ordenador."); return; }
-  if(act==="wntest"){ toast("Te llegará un aviso de prueba en 5 segundos"); setTimeout(()=>wnShow("⚒️ Prueba de Clash Alerter","Si ves esto, los avisos funcionan en este ordenador.","test"),5000); return; }
   if(act==="gobswap"){ gobSwap(el.dataset.acc, el.dataset.u); return; }
   if(act==="start"){
     // Se empieza al momento con el tiempo del juego; si hace falta, se cambia luego con "Ajustar tiempo"
