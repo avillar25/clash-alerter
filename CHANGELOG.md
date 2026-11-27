@@ -2,6 +2,9 @@
 
 <!-- La versión más nueva arriba. Cambios pequeños: 1.2, 1.3…  Cambios gordos: 2.0 -->
 
+## v1.11 — 27/11/2026
+- Al volver a tocar la rueda de ajustes se cierran y vuelves a la pantalla donde estabas.
+
 ## v1.10 — 27/11/2026
 - Nuevo botón de ajustes (rueda dentada) arriba a la derecha: abre una pantalla con todos los ajustes, los de cada cuenta (importar JSON) y los generales. Ya no hay que bajar hasta el final.
 - Web: avisos del navegador mientras la web está abierta (Ajustes → Avisos en este ordenador).

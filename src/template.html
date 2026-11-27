@@ -1961,7 +1961,10 @@ document.addEventListener("click",ev=>{
   const act=el.dataset.act;
   if(act==="close-bg"){ if(ev.target===el) closeModal(); return; }
   if(act==="close"){ closeModal(); return; }
-  if(act==="view"){ if(el.dataset.vil) S.vil=el.dataset.vil; S.view=el.dataset.v; S.catQ=""; S.catG=""; S.catNew=false; render(); window.scrollTo(0,0); return; }
+  if(act==="view"){ if(el.dataset.vil) S.vil=el.dataset.vil;
+    // la rueda abre y cierra los ajustes: al cerrar vuelve a donde estabas
+    if(el.dataset.v==="settings"){ if(S.view==="settings"){ S.view=S.prevView||"all"; render(); window.scrollTo(0,0); return; } S.prevView=S.view; }
+    S.view=el.dataset.v; S.catQ=""; S.catG=""; S.catNew=false; render(); window.scrollTo(0,0); return; }
   if(act==="uptab"){ S.upTab[el.dataset.k]=el.dataset.w; render(); return; }
   if(act==="catg"){ S.catG=el.dataset.g; S.catQ=""; render(); return; }
   if(act==="vil"){ S.vil=el.dataset.v; S.catQ=""; S.catG=""; S.catNew=false; render(); return; }
