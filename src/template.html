@@ -296,6 +296,7 @@ details.loot summary{font-family:var(--btn-font,var(--body));font-size:15px}
 .wup{display:flex;gap:6px;align-items:center}.wup input{width:64px;padding:6px}
 .night-sug{border-color:var(--night)!important}
 .banner.okb{background:var(--ok-soft);color:var(--ok)}
+.banner.warnb{background:var(--warn-soft,#fdecc8);color:var(--warn,#8a5a00)}
 .toast.act{display:flex;width:min(92%,420px);align-items:center;gap:12px;bottom:max(18px,env(safe-area-inset-bottom))}
 .tbtn{border:0;background:var(--gold);color:#1d1404;font:800 13px var(--body);border-radius:8px;padding:6px 10px;cursor:pointer;white-space:nowrap}
 .btn.ham{padding:5px 7px}
@@ -406,6 +407,8 @@ const WORKER = {b:"Constructores", l:"Laboratorio", p:"Casa de mascotas", bb:"Co
 const WORKER_SHORT = {b:"Constructor", l:"Laboratorio", p:"Mascotas", bb:"Constructor (BC)", bl:"Lab. estelar"};
 const RES = {"Gold":"Oro","Elixir":"Elixir","Dark Elixir":"Elixir oscuro","Builder Gold":"Oro (BC)","Builder Elixir":"Elixir (BC)"};
 const HELPERS = {93000000:"Aprendiz", 93000001:"Ayudante de laboratorio", 93000002:"Alquimista", 93000003:"Prospector"};
+// Ni aviso ni widget cuando vuelven a estar disponibles
+const HELPER_NO_NOTIF = {93000002:true, 93000003:true};
 /* Ayuntamiento que pide cada nivel de los ayudantes (nivel 1, 2, 3…) */
 const HELPER_REQ = {93000000:[10,10,11,11,12,12,13,14], 93000001:[9,10,10,11,12,12,13,13,14,14,15,16], 93000002:[11,12,13,14,15,16,17]};
 /* Gemas que cuesta cada nivel (el 1 es desbloquearlo; el Ayudante de laboratorio viene gratis) */
@@ -952,6 +955,9 @@ async function gh(path, opt={}){
   if(r.status===401) throw new Error("El token no es válido o ha caducado");
   if(r.status===403||r.status===404) throw new Error("El token no tiene permiso de Gists (lectura y escritura)");
   if(!r.ok) throw new Error("GitHub respondió "+r.status);
+  // Tokens clásicos: GitHub dice qué permisos tienen. Si tiene más de los necesarios, se avisa.
+  const sc=r.headers.get("x-oauth-scopes");
+  if(sc!==null){ const extra=sc.split(",").map(x=>x.trim()).filter(x=>x&&x!=="gist"); SYNC.extraScopes=extra; }
   return r.status===204?null:r.json();
 }
 async function syncFindGist(recheck){
@@ -1060,7 +1066,7 @@ function syncPanel(){
     <div class="small">Esta versión dentro de Claude no puede conectarse a GitHub. Para tener tus datos sincronizados con el móvil, usa la web <b>avillar25.github.io/clash-alerter</b>.</div></details>`;
   const on=syncOn();
   return `<details class="panel"><summary>Sincronizar ${NATIVE?"con el PC":"con el móvil"}</summary>
-    ${on?`<div class="small okt">Conectado${SYNC.last?` · última vez ${esc(fmtWhen(SYNC.last))}`:""}</div>${SYNC.err?`<div class="small" style="color:var(--bad,#c0392b)">${esc(SYNC.err)}</div>`:""}${SYNC.cfg.gist?`<div class="small muted">Copia en GitHub: ${esc(String(SYNC.cfg.gist).slice(0,7))} (tiene que salir lo mismo en el móvil y en el PC)</div>`:""}
+    ${on?`<div class="small okt">Conectado${SYNC.last?` · última vez ${esc(fmtWhen(SYNC.last))}`:""}</div>${SYNC.err?`<div class="small" style="color:var(--bad,#c0392b)">${esc(SYNC.err)}</div>`:""}${SYNC.extraScopes&&SYNC.extraScopes.length?`<div class="banner warnb small">Tu token tiene más permisos de los necesarios (${esc(SYNC.extraScopes.join(", "))}). Si alguien lo consiguiera podría tocar tus repositorios. Mejor crea uno que solo tenga permiso de Gists.</div>`:""}${SYNC.cfg.gist?`<div class="small muted">Copia en GitHub: ${esc(String(SYNC.cfg.gist).slice(0,7))} (tiene que salir lo mismo en el móvil y en el PC)</div>`:""}
       <div class="actions"><button class="btn" data-act="syncnow">Sincronizar ahora</button><button class="btn" data-act="syncoff">Desconectar</button></div>`
     :`<div class="small">Pega tu token de GitHub (solo con permiso de Gists) para tener los mismos datos en el móvil y en el PC. Se guarda solo en este dispositivo.</div>
       <label for="gh-token">Token de GitHub<input id="gh-token" type="password" autocomplete="off" placeholder="github_pat_…" value="${esc(S.tokDraft||"")}"></label>
@@ -1109,6 +1115,8 @@ async function initStore(){
     if(P.App){
       P.App.addListener("appStateChange", st=>{ if(st.isActive){ checkDone(); render(); syncNotifications(); checkUpdate(false); syncNow(); } else syncFlush(); });
       P.App.addListener("appUrlOpen", e=>openFromUrl(e&&e.url));
+      // Al tocar una notificación: ir a la cuenta y aldea de la que habla
+      if(P.LocalNotifications&&P.LocalNotifications.addListener) P.LocalNotifications.addListener("localNotificationActionPerformed", ev=>goTo(ev&&ev.notification&&ev.notification.extra));
       if(P.App.getLaunchUrl) P.App.getLaunchUrl().then(r=>openFromUrl(r&&r.url)).catch(()=>{});
       P.App.addListener("backButton", ()=>{ if(document.querySelector("#modal-root .modal")) closeModal(); else if(S.view!=="all"){ S.view="all"; render(); } else P.App.exitApp(); });
     }
@@ -1191,18 +1199,18 @@ function plannedNotifications(now){
     }
     const nxt=u=>next[u.u]?`${CAT[next[u.u].id].n} ${stepTxt(next[u.u].id,next[u.u].from)}`:"";
     // 1: ayudantes listos otra vez
-    for(const [hid,h] of Object.entries(a.helpers||{})) if(h&&(h.lvl>0||!HELPER_REQ[hid])&&h.end>now+5000&&HELPERS[hid])
-      list.push({id:nid(a._id+":helper:"+hid), title:`🧑‍🔧 ${a.name}: ${HELPERS[hid]} disponible`, body:`Ya puedes volver a usar ${HELPERS[hid].toLowerCase()==="aprendiz"?"al aprendiz":"al "+HELPERS[hid].toLowerCase()}.`, at:h.end});
-    if(a.clock && a.clock>now+5000) list.push({id:nid(a._id+":clock"), title:`⏰ ${a.name}: torre del reloj lista`, body:"Ya puedes volver a activar la torre del reloj en la base del constructor.", at:a.clock});
+    for(const [hid,h] of Object.entries(a.helpers||{})) if(h&&(h.lvl>0||!HELPER_REQ[hid])&&h.end>now+5000&&HELPERS[hid]&&!HELPER_NO_NOTIF[hid])
+      list.push({go:[a._id,"h"], id:nid(a._id+":helper:"+hid), title:`🧑‍🔧 ${a.name}: ${HELPERS[hid]} disponible`, body:`Ya puedes volver a usar ${HELPERS[hid].toLowerCase()==="aprendiz"?"al aprendiz":"al "+HELPERS[hid].toLowerCase()}.`, at:h.end});
+    if(a.clock && a.clock>now+5000) list.push({go:[a._id,"bb"], id:nid(a._id+":clock"), title:`⏰ ${a.name}: torre del reloj lista`, body:"Ya puedes volver a activar la torre del reloj en la base del constructor.", at:a.clock});
     for(const u of a.ups||[]){
       if(u.end<=now+5000) continue;
       const n=(CAT[u.id]||{}).n||u.n||"Mejora";
       const nx=u.gob?"":nxt(u);
-      list.push({id:nid(u.u+":end"), title:`${EMO[u.w]||"⚒️"} ${a.name}: ${n} terminada`, body:`${stepTxt(u.id,u.from)} · ${u.gob?(GOBLIN[u.w]||"Duende")+" libre":FREE[u.w]||"Trabajador libre"}${nx?` → toca ${nx}`:""}`, at:u.end});
+      list.push({go:[a._id,vilOf(u.id)], id:nid(u.u+":end"), title:`${EMO[u.w]||"⚒️"} ${a.name}: ${n} terminada`, body:`${stepTxt(u.id,u.from)} · ${u.gob?(GOBLIN[u.w]||"Duende")+" libre":FREE[u.w]||"Trabajador libre"}${nx?` → toca ${nx}`:""}`, at:u.end});
       if(idleOn && !u.gob){
         const at=u.end+idleH*3600000, cap=(a.cap||{})[u.w]||0;
         const busyThen=(a.ups||[]).filter(x=>x.w===u.w&&!x.gob&&x.end>at).length;
-        if(cap && busyThen<cap) list.push({id:nid(u.u+":idle"), title:`💤 ${a.name}: ${(WORKER_SHORT[u.w]||"trabajador").toLowerCase()} sin trabajo`, body:`Lleva ${idleH} h libre desde que terminó ${n}. ${nx?`Según tu plan toca ${nx}.`:"Pon otra mejora."}`, at});
+        if(cap && busyThen<cap) list.push({go:[a._id,vilOf(u.id)], id:nid(u.u+":idle"), title:`💤 ${a.name}: ${(WORKER_SHORT[u.w]||"trabajador").toLowerCase()} sin trabajo`, body:`Lleva ${idleH} h libre desde que terminó ${n}. ${nx?`Según tu plan toca ${nx}.`:"Pon otra mejora."}`, at});
       }
     }
   }
@@ -1216,7 +1224,7 @@ function widgetPayload(now){
   return {t:now, accs:accounts().map(a=>{
     const ends={}; for(const u of a.ups||[]) if(!u.gob&&u.end>now) (ends[u.w]=ends[u.w]||[]).push(u.end);
     const ready=[];
-    for(const [id,h] of Object.entries(a.helpers||{})) if(HELPERS[id]&&h&&(h.lvl>0||!HELPER_REQ[id])) ready.push({t:HELPERS[id]+" listo", e:h.end||0});
+    for(const [id,h] of Object.entries(a.helpers||{})) if(HELPERS[id]&&!HELPER_NO_NOTIF[id]&&h&&(h.lvl>0||!HELPER_REQ[id])) ready.push({t:HELPERS[id]+" listo", e:h.end||0});
     return {id:a._id, name:a.name, color:accColor(a), cap:a.cap||{}, ends,
       ups:(a.ups||[]).filter(u=>u.end>now).map(u=>({n:`${CAT[u.id]?CAT[u.id].n:(u.n||"Mejora")} ${stepTxt(u.id,u.from)}`, e:u.end})),
       ready};
@@ -1237,7 +1245,7 @@ async function syncNotifications(){
   try{
     const pend=await LN.getPending(); if(pend.notifications.length) await LN.cancel({notifications:pend.notifications.map(n=>({id:n.id}))});
     const list=plannedNotifications(Date.now());
-    if(list.length) await LN.schedule({notifications:list.map(x=>({id:x.id, title:x.title, body:x.body, channelId:"mejoras", schedule:{at:new Date(x.at), allowWhileIdle:true}, extra:{view:"all"}}))});
+    if(list.length) await LN.schedule({notifications:list.map(x=>({id:x.id, title:x.title, body:x.body, channelId:"mejoras", schedule:{at:new Date(x.at), allowWhileIdle:true}, extra:x.go?{acc:x.go[0], vil:x.go[1]}:{view:"all"}}))});
     S.notifCount=list.length;
     widgetSync();
   }catch(e){ S.notifErr=String(e&&e.message||e); }
@@ -1247,8 +1255,15 @@ async function syncNotifications(){
 const WN={pend:[], key:"web-notif", firedKey:"web-notif-fired"};
 function wnSupported(){ return !NATIVE && typeof Notification!=="undefined"; }
 function wnOn(){ try{ return wnSupported() && localStorage.getItem(WN.key)==="1" && Notification.permission==="granted"; }catch(e){ return false; } }
-function wnShow(title, body, tag){
-  try{ const n=new Notification(title, {body, tag, icon:(document.querySelector('link[rel="apple-touch-icon"]')||{}).href}); n.onclick=()=>{ window.focus(); n.close(); }; }catch(e){}
+function wnShow(title, body, tag, go){
+  try{ const n=new Notification(title, {body, tag, icon:(document.querySelector('link[rel="apple-touch-icon"]')||{}).href}); n.onclick=()=>{ window.focus(); n.close(); goTo(go); }; }catch(e){}
+}
+/* Al tocar un aviso: abre la cuenta y la aldea de la que habla */
+function goTo(x){
+  if(!x) return;
+  if(x.acc && accounts().some(a=>a._id===x.acc)){ S.view=x.acc; if(x.vil) S.vil=x.vil; }
+  else S.view="all";
+  if(S.ready){ checkDone(); render(); window.scrollTo(0,0); }
 }
 function wnTick(){
   if(!wnOn() || !S.ready) { WN.pend=[]; return; }
@@ -1256,7 +1271,7 @@ function wnTick(){
   try{ fired=JSON.parse(localStorage.getItem(WN.firedKey)||"{}"); }catch(e){}
   for(const x of WN.pend){
     const k=x.id+":"+x.at;
-    if(x.at<=now && x.at>now-15*60000 && !fired[k]){ fired[k]=now; wnShow(x.title, x.body, String(x.id)); }
+    if(x.at<=now && x.at>now-15*60000 && !fired[k]){ fired[k]=now; wnShow(x.title, x.body, String(x.id), x.go?{acc:x.go[0], vil:x.go[1]}:null); }
   }
   for(const k in fired) if(fired[k]<now-2*86400000) delete fired[k];
   try{ localStorage.setItem(WN.firedKey, JSON.stringify(fired)); }catch(e){}
@@ -1669,7 +1684,7 @@ function magicHtml(acc, vil, now){
   const haveTxt=k=>{ const h=miHave(acc,k); return h===null?"":` <span class="micnt ${h?"":"zero"}">tienes ${h}</span>`; };
   const can=k=>{ const h=miHave(acc,k); return h===null||h>0; };
   const brow=x=>{ const f=FINISH[x.k]; if(!x.up) return `<div class="mrow"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}${haveTxt(x.k)}</div><div class="sub">No hay nada en curso donde usarlo</div></div><span></span></div>`;
-    const u=x.up; return `<div class="mrow ${can(x.k)?"":"dim"}"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}${haveTxt(x.k)}</div><div class="sub">${esc(CAT[u.id].n)} ${esc(stepTxt(u.id,u.from))} · ahorras <b>${fmtDur(u.end-now)}</b></div></div>
+    const u=x.up; if(!u||!CAT[u.id]) return ""; return `<div class="mrow ${can(x.k)?"":"dim"}"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}${haveTxt(x.k)}</div><div class="sub">${esc(CAT[u.id].n)} ${esc(stepTxt(u.id,u.from))} · ahorras <b>${fmtDur(u.end-now)}</b></div></div>
       ${can(x.k)?`<button class="btn" data-act="dofinish" data-m="${x.k}" data-acc="${esc(acc._id)}" data-u="${esc(u.u)}">Usar</button>`:"<span></span>"}</div>`; };
   const hrow=x=>{ const f=FINISH[x.k]; if(!x.it) return `<div class="mrow"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}${haveTxt(x.k)}</div><div class="sub">Nada disponible para mejorar</div></div><span></span></div>`;
     const it=x.it; return `<div class="mrow ${can(x.k)?"":"dim"}"><div class="tile sm">${img(f[1],0)}</div><div><div class="nm">${esc(f[0])}${haveTxt(x.k)}</div><div class="sub">${esc(CAT[it.id].n)} ${esc(stepTxt(it.id,it.from))} · ahorras <b>${fmtDur(it.d)}</b></div></div>

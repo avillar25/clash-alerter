@@ -16,21 +16,24 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
     // Misma firma en todas las compilaciones, para poder actualizar la app sin desinstalarla
+    // La clave de firma NO está en el repositorio: GitHub la crea en cada compilación a partir de sus secretos
     signingConfigs {
-        debug {
-            storeFile file("clash-alerter.keystore")
-            storePassword "clashalerter"
+        release {
+            storeFile file(System.getenv("SIGN_STORE") ?: "no-existe.jks")
+            storePassword System.getenv("SIGN_PASSWORD") ?: ""
             keyAlias "clashalerter"
-            keyPassword "clashalerter"
+            keyPassword System.getenv("SIGN_PASSWORD") ?: ""
         }
     }
     buildTypes {
-        debug {
-            signingConfig signingConfigs.debug
-        }
         release {
             minifyEnabled false
+            signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }

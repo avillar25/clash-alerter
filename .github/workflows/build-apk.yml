@@ -46,19 +46,29 @@ jobs:
       - name: Copiar la web a Android
         run: npx cap sync android
 
+      - name: Preparar la clave de firma (desde los secretos del repositorio)
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then echo "::error::Falta el secreto KEYSTORE_B64 (Settings → Secrets and variables → Actions)"; exit 1; fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/firma.jks"
+          echo "SIGN_STORE=$RUNNER_TEMP/firma.jks" >> "$GITHUB_ENV"
+
       - name: Compilar
         working-directory: android
+        env:
+          SIGN_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           chmod +x gradlew
           set -o pipefail
-          if ! ./gradlew assembleDebug --no-daemon 2>&1 | tee ../build.log; then
+          if ! ./gradlew assembleRelease --no-daemon 2>&1 | tee ../build.log; then
             # Errores de compilación visibles como anotaciones del run
             grep -E "error:|e: |FAILURE|What went wrong" -A2 ../build.log | head -40 | while IFS= read -r l; do echo "::error::$l"; done
             exit 1
           fi
 
       - name: Renombrar APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk clash-alerter.apk
+        run: cp android/app/build/outputs/apk/release/app-release.apk clash-alerter.apk && rm -f "$RUNNER_TEMP/firma.jks"
 
       - uses: actions/upload-artifact@v4
         with:

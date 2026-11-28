@@ -2,6 +2,15 @@
 
 <!-- La versión más nueva arriba. Cambios pequeños: 1.2, 1.3…  Cambios gordos: 2.0 -->
 
+## v1.16 — 27/11/2026
+- Seguridad: la app se firma con una clave nueva que ya no está en el repositorio público. **Hay que desinstalar la versión anterior e instalar esta** (una sola vez); los datos vuelven al poner el token de sincronización.
+- Seguridad: compilación definitiva en vez de la de pruebas (no se pueden leer los datos de la app conectando el móvil a un ordenador).
+- Seguridad: la app ya no entra en las copias de seguridad automáticas de Android.
+- Seguridad: aviso si el token de GitHub tiene más permisos de los necesarios.
+- Web: política de seguridad que solo le deja conectarse a GitHub.
+- El alquimista y el prospector ya no salen en los avisos ni en el widget.
+- Al tocar un aviso se abre directamente la cuenta y la aldea de la que habla (por ejemplo, Principal → base del constructor). También en los avisos de la web.
+
 ## v1.15 — 27/11/2026
 - Widget: ya no muestra la torre del reloj.
 

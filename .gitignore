@@ -1,3 +1,7 @@
 node_modules/
 *.apk
 .DS_Store
+
+# Claves de firma: nunca en el repositorio
+*.jks
+*.keystore

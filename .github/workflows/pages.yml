@@ -27,7 +27,17 @@ jobs:
       - name: Generar la web
         run: python3 scripts/build-web.py
       - name: Preparar
-        run: mkdir -p _site && cp www/index.html www/images.json _site/
+        run: |
+          mkdir -p _site && cp www/index.html www/images.json _site/
+          # Política de seguridad (solo en la web): limita a dónde puede conectarse y qué puede cargar
+          python3 - <<'PY'
+          p="_site/index.html"; s=open(p,encoding="utf-8").read()
+          csp=("default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+               "font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://api.github.com https://gist.githubusercontent.com; "
+               "manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'")
+          meta='<meta http-equiv="Content-Security-Policy" content="'+csp+'">\n<meta name="referrer" content="no-referrer">'
+          assert "<head>" in s; s=s.replace("<head>","<head>\n"+meta,1); open(p,"w",encoding="utf-8").write(s)
+          PY
       - uses: actions/upload-pages-artifact@v4
         with:
           path: _site
