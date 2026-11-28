@@ -295,6 +295,14 @@ details.loot summary{font-family:var(--btn-font,var(--body));font-size:15px}
 .wall.max{opacity:.7}
 .wup{display:flex;gap:6px;align-items:center}.wup input{width:64px;padding:6px}
 .night-sug{border-color:var(--night)!important}
+.updprog .bar{height:8px;border-radius:5px;background:var(--line,rgba(0,0,0,.1));overflow:hidden;margin-top:4px}.updprog .bar i{display:block;height:100%;background:var(--gold,#e0a100);transition:width .2s}
+.havebox{margin:8px 0}.haves{display:flex;flex-wrap:wrap;gap:8px}
+.have{display:flex!important;flex-direction:row!important;align-items:center;gap:6px;margin:0}.have img{width:22px;height:22px;flex:none}.have input{width:118px;margin:0}
+.rlist{display:flex;flex-direction:column;gap:10px;margin-top:6px}.rrow{border-top:1px solid var(--line,rgba(0,0,0,.1));padding-top:8px}
+.rchips{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:4px}.rchip{display:flex;flex-direction:column;gap:1px}
+.falta{color:var(--bad,#c0392b);font-weight:700}
+.tagoff{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:1px 6px;border-radius:6px;background:#e8572a22;color:#c2410c;vertical-align:middle}
+.sleept{color:var(--muted)}
 .banner.okb{background:var(--ok-soft);color:var(--ok)}
 .banner.warnb{background:var(--warn-soft,#fdecc8);color:var(--warn,#8a5a00)}
 .toast.act{display:flex;width:min(92%,420px);align-items:center;gap:12px;bottom:max(18px,env(safe-area-inset-bottom))}
@@ -432,10 +440,10 @@ const isLab = w => w==="l"||w==="bl"||w==="p";
 const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 const P = NATIVE ? (window.Capacitor.Plugins||{}) : {};
 /* Versión de la app y repositorio de GitHub de donde salen las actualizaciones (los rellena la compilación) */
-const APP_VERSION = "v1.16";
+const APP_VERSION = "v1.17";
 const UPDATE_REPO = "";
 /* Historial de cambios (de CHANGELOG.md): [{v:"v1.2", date:"…", text:"- …"}] */
-const CHANGELOG = [{"v": "v1.16", "date": "27/11/2026", "text": "- Seguridad: la app se firma con una clave nueva que ya no está en el repositorio público. **Hay que desinstalar la versión anterior e instalar esta** (una sola vez); los datos vuelven al poner el token de sincronización.\n- Seguridad: compilación definitiva en vez de la de pruebas (no se pueden leer los datos de la app conectando el móvil a un ordenador).\n- Seguridad: la app ya no entra en las copias de seguridad automáticas de Android.\n- Seguridad: aviso si el token de GitHub tiene más permisos de los necesarios.\n- Web: política de seguridad que solo le deja conectarse a GitHub.\n- El alquimista y el prospector ya no salen en los avisos ni en el widget.\n- Al tocar un aviso se abre directamente la cuenta y la aldea de la que habla (por ejemplo, Principal → base del constructor). También en los avisos de la web."}, {"v": "v1.15", "date": "27/11/2026", "text": "- Widget: ya no muestra la torre del reloj."}, {"v": "v1.14", "date": "27/11/2026", "text": "- Resumen: el texto \"Acaba hoy a las…\" de las pestañas se ve nítido (antes salía borroso en la aldea principal)."}, {"v": "v1.13", "date": "27/11/2026", "text": "- Resumen más corto: ya no muestra la lista de mejoras en curso, solo los trabajadores y cuándo acaba la siguiente. Si la quieres ver, marca la casilla \"Ver lista\" en cada aldea del Resumen."}, {"v": "v1.12", "date": "27/11/2026", "text": "- Ayudantes (aprendiz, ayudante de laboratorio, alquimista): botón para poner cuánto les falta para estar disponibles (\"No está disponible\") o marcarlos como listos (\"Ya está disponible\"), igual que la torre del reloj."}, {"v": "v1.11", "date": "27/11/2026", "text": "- Al volver a tocar la rueda de ajustes se cierran y vuelves a la pantalla donde estabas."}, {"v": "v1.10", "date": "27/11/2026", "text": "- Nuevo botón de ajustes (rueda dentada) arriba a la derecha: abre una pantalla con todos los ajustes, los de cada cuenta (importar JSON) y los generales. Ya no hay que bajar hasta el final.\n- Web: avisos del navegador mientras la web está abierta (Ajustes → Avisos en este ordenador)."}, {"v": "v1.9", "date": "27/11/2026", "text": "- Botón en cada mejora de la aldea para cambiar quién la hace: \"Era el duende\" / \"Era un constructor\".\n- Si la app pone una mejora con el constructor duende, el aviso trae el botón \"Era un constructor\" para corregirlo al momento.\n- Torre del reloj: botón para marcarla como \"No está disponible\" (pones cuánto le falta) o \"Ya está disponible\".\n- Web: icono de la app en la pestaña del navegador."}, {"v": "v1.8", "date": "25/11/2026", "text": "- Sincronización: si cambias la misma cuenta en el móvil y en el PC, ya no se pierde nada. Se juntan las mejoras empezadas, terminadas y canceladas en los dos lados (antes ganaba entera la última versión guardada y podía borrar una mejora).\n- Versión web: en Ajustes → Acerca de se ve la versión y el historial de cambios."}, {"v": "v1.7", "date": "25/11/2026", "text": "- Sincronización: siempre se leen los datos frescos de GitHub (antes el móvil o el navegador podían leer una copia guardada y no ver los cambios del otro lado).\n- Los cambios se suben al momento al salir de la app o cambiar de pestaña, sin esperar.\n- Si hubiera más de una copia en GitHub, todos los dispositivos usan la misma. En Ajustes se ve qué copia usa cada uno."}, {"v": "v1.6", "date": "24/11/2026", "text": "- Sincronización entre el móvil y el PC con un Gist secreto de tu GitHub (Ajustes → Sincronizar).\n- Versión web para el PC en avillar25.github.io/clash-alerter, con los mismos datos que el móvil.\n- Eventos: ahora también se ven los que están en curso (por ejemplo, los Juegos del clan) y cuándo acaban."}, {"v": "v1.5", "date": "24/11/2026", "text": "- Resumen sin la cabecera \"Clash Alerter · Guardado en este navegador\"."}, {"v": "v1.4", "date": "24/11/2026", "text": "- Widgets para la pantalla de inicio: grande (próximas 3 mejoras, trabajadores libres y ayudantes listos) y pequeño (la próxima mejora).\n- Botón \"Añadir widget\" en Ajustes para elegir el tamaño y colocarlo.\n- Al tocar el widget se abre la app en la cuenta de esa mejora."}, {"v": "v1.3", "date": "24/11/2026", "text": "- Icono nuevo: anillo de progreso con un martillo de constructor y un reloj de arena, con contorno cuadrado (adiós al ayuntamiento 15).\n- Pantalla de inicio con el nuevo icono."}, {"v": "v1.2", "date": "24/11/2026", "text": "- Horario de sueño en formato hora (HH:MM): los \":\" se ponen solos y ya no deja escribir más de 4 cifras.\n- \"Horas libre antes de avisar\" limitado a 1–24."}, {"v": "v1.1", "date": "24/11/2026", "text": "Primera versión de la app del móvil.\n- Dos cuentas con aldea principal y base nocturna, importando el JSON del juego.\n- Mejoras en curso por pestañas (constructores, laboratorio, mascotas) y empezar mejoras al momento con el tiempo del juego.\n- No deja empezar mejoras con todos los trabajadores ocupados, salvo que el duende esté libre.\n- Pase de oro, pociones, sopa, carne, torre del reloj (duración por nivel y recarga de 22 h) y ayudantes (también hasta que acabe la mejora).\n- Ayudantes con su nivel, bloqueados o no, y gemas para desbloquearlos y maxearlos.\n- Terminar con gemas o libros, martillos e inventario de objetos mágicos.\n- Plan de mejoras con propuesta recomendada, progreso del ayuntamiento, muros, guardianes y nivel máximo de cada mejora.\n- Equipamiento de héroes en el orden del juego, con el que no tienes marcado como bloqueado.\n- Avisos en el móvil: mejora terminada (y qué toca después según el plan), trabajador libre, ayudantes y torre del reloj listos, y eventos (Liga de guerra, Juegos del clan, asaltos y fin de temporada).\n- Aviso dentro de la app cuando hay una versión nueva, con su historial de cambios."}];
+const CHANGELOG = [{"v": "v1.17", "date": "28/11/2026", "text": "- \"Qué empezar ahora\": para cada trabajador libre, las mejoras que acaban cuando estás despierto (según tu horario de sueño) y, de esas, primero las de ataque (campamentos, cuarteles, laboratorio, héroes, hechizos...).\n- Panel de Recursos: oro, elixir y elixir oscuro que necesitas para el plan, para maxear el ayuntamiento y para los muros. Si apuntas lo que tienes, te dice cuánto te falta.\n- Actualizar desde la app: el botón descarga la versión nueva y abre directamente el instalador (la primera vez Android pide permiso)."}, {"v": "v1.16", "date": "27/11/2026", "text": "- Seguridad: la app se firma con una clave nueva que ya no está en el repositorio público. **Hay que desinstalar la versión anterior e instalar esta** (una sola vez); los datos vuelven al poner el token de sincronización.\n- Seguridad: compilación definitiva en vez de la de pruebas (no se pueden leer los datos de la app conectando el móvil a un ordenador).\n- Seguridad: la app ya no entra en las copias de seguridad automáticas de Android.\n- Seguridad: aviso si el token de GitHub tiene más permisos de los necesarios.\n- Web: política de seguridad que solo le deja conectarse a GitHub.\n- El alquimista y el prospector ya no salen en los avisos ni en el widget.\n- Al tocar un aviso se abre directamente la cuenta y la aldea de la que habla (por ejemplo, Principal → base del constructor). También en los avisos de la web."}, {"v": "v1.15", "date": "27/11/2026", "text": "- Widget: ya no muestra la torre del reloj."}, {"v": "v1.14", "date": "27/11/2026", "text": "- Resumen: el texto \"Acaba hoy a las…\" de las pestañas se ve nítido (antes salía borroso en la aldea principal)."}, {"v": "v1.13", "date": "27/11/2026", "text": "- Resumen más corto: ya no muestra la lista de mejoras en curso, solo los trabajadores y cuándo acaba la siguiente. Si la quieres ver, marca la casilla \"Ver lista\" en cada aldea del Resumen."}, {"v": "v1.12", "date": "27/11/2026", "text": "- Ayudantes (aprendiz, ayudante de laboratorio, alquimista): botón para poner cuánto les falta para estar disponibles (\"No está disponible\") o marcarlos como listos (\"Ya está disponible\"), igual que la torre del reloj."}, {"v": "v1.11", "date": "27/11/2026", "text": "- Al volver a tocar la rueda de ajustes se cierran y vuelves a la pantalla donde estabas."}, {"v": "v1.10", "date": "27/11/2026", "text": "- Nuevo botón de ajustes (rueda dentada) arriba a la derecha: abre una pantalla con todos los ajustes, los de cada cuenta (importar JSON) y los generales. Ya no hay que bajar hasta el final.\n- Web: avisos del navegador mientras la web está abierta (Ajustes → Avisos en este ordenador)."}, {"v": "v1.9", "date": "27/11/2026", "text": "- Botón en cada mejora de la aldea para cambiar quién la hace: \"Era el duende\" / \"Era un constructor\".\n- Si la app pone una mejora con el constructor duende, el aviso trae el botón \"Era un constructor\" para corregirlo al momento.\n- Torre del reloj: botón para marcarla como \"No está disponible\" (pones cuánto le falta) o \"Ya está disponible\".\n- Web: icono de la app en la pestaña del navegador."}, {"v": "v1.8", "date": "25/11/2026", "text": "- Sincronización: si cambias la misma cuenta en el móvil y en el PC, ya no se pierde nada. Se juntan las mejoras empezadas, terminadas y canceladas en los dos lados (antes ganaba entera la última versión guardada y podía borrar una mejora).\n- Versión web: en Ajustes → Acerca de se ve la versión y el historial de cambios."}, {"v": "v1.7", "date": "25/11/2026", "text": "- Sincronización: siempre se leen los datos frescos de GitHub (antes el móvil o el navegador podían leer una copia guardada y no ver los cambios del otro lado).\n- Los cambios se suben al momento al salir de la app o cambiar de pestaña, sin esperar.\n- Si hubiera más de una copia en GitHub, todos los dispositivos usan la misma. En Ajustes se ve qué copia usa cada uno."}, {"v": "v1.6", "date": "24/11/2026", "text": "- Sincronización entre el móvil y el PC con un Gist secreto de tu GitHub (Ajustes → Sincronizar).\n- Versión web para el PC en avillar25.github.io/clash-alerter, con los mismos datos que el móvil.\n- Eventos: ahora también se ven los que están en curso (por ejemplo, los Juegos del clan) y cuándo acaban."}, {"v": "v1.5", "date": "24/11/2026", "text": "- Resumen sin la cabecera \"Clash Alerter · Guardado en este navegador\"."}, {"v": "v1.4", "date": "24/11/2026", "text": "- Widgets para la pantalla de inicio: grande (próximas 3 mejoras, trabajadores libres y ayudantes listos) y pequeño (la próxima mejora).\n- Botón \"Añadir widget\" en Ajustes para elegir el tamaño y colocarlo.\n- Al tocar el widget se abre la app en la cuenta de esa mejora."}, {"v": "v1.3", "date": "24/11/2026", "text": "- Icono nuevo: anillo de progreso con un martillo de constructor y un reloj de arena, con contorno cuadrado (adiós al ayuntamiento 15).\n- Pantalla de inicio con el nuevo icono."}, {"v": "v1.2", "date": "24/11/2026", "text": "- Horario de sueño en formato hora (HH:MM): los \":\" se ponen solos y ya no deja escribir más de 4 cifras.\n- \"Horas libre antes de avisar\" limitado a 1–24."}, {"v": "v1.1", "date": "24/11/2026", "text": "Primera versión de la app del móvil.\n- Dos cuentas con aldea principal y base nocturna, importando el JSON del juego.\n- Mejoras en curso por pestañas (constructores, laboratorio, mascotas) y empezar mejoras al momento con el tiempo del juego.\n- No deja empezar mejoras con todos los trabajadores ocupados, salvo que el duende esté libre.\n- Pase de oro, pociones, sopa, carne, torre del reloj (duración por nivel y recarga de 22 h) y ayudantes (también hasta que acabe la mejora).\n- Ayudantes con su nivel, bloqueados o no, y gemas para desbloquearlos y maxearlos.\n- Terminar con gemas o libros, martillos e inventario de objetos mágicos.\n- Plan de mejoras con propuesta recomendada, progreso del ayuntamiento, muros, guardianes y nivel máximo de cada mejora.\n- Equipamiento de héroes en el orden del juego, con el que no tienes marcado como bloqueado.\n- Avisos en el móvil: mejora terminada (y qué toca después según el plan), trabajador libre, ayudantes y torre del reloj listos, y eventos (Liga de guerra, Juegos del clan, asaltos y fin de temporada).\n- Aviso dentro de la app cuando hay una versión nueva, con su historial de cambios."}];
 
 /* ---------- imágenes (se cargan aparte para que la página abra rápido) ---------- */
 let IMG=null;
@@ -1219,6 +1227,7 @@ function plannedNotifications(now){
 }
 let syncing=false, syncAgain=false;
 /* Widgets de la pantalla de inicio: la app deja un resumen y el widget nativo lo pinta */
+function updPlugin(){ const C=window.Capacitor||{}; return (C.Plugins&&C.Plugins.ClashUpdate) || (C.registerPlugin?C.registerPlugin("ClashUpdate"):null); }
 function widgetPlugin(){ const C=window.Capacitor||{}; return (C.Plugins&&C.Plugins.ClashWidget) || (C.registerPlugin?C.registerPlugin("ClashWidget"):null); }
 function widgetPayload(now){
   return {t:now, accs:accounts().map(a=>{
@@ -1330,8 +1339,11 @@ function updateBanner(){
   if(!hasUpdate()) return "";
   return `<div class="panel upd"><div class="panel-head"><h2>Versión nueva disponible</h2><span class="muted small">Tienes la ${esc(APP_VERSION)} · nueva ${esc(UPD.latest)}</span></div>
     ${UPD.notes?`<div class="small"><b>Qué cambia:</b><ul class="updnotes">${UPD.notes.split("\n").map(l=>l.trim()).filter(l=>l&&!/^(Co-Authored-By|Claude-Session):/i.test(l)).slice(0,8).map(l=>`<li>${esc(l.replace(/^- /,""))}</li>`).join("")}</ul></div>`:""}
-    <div class="actions"><button class="btn primary big" data-act="updget">Descargar e instalar</button></div>
-    <div class="small muted">Se descarga el APK; ábrelo y pulsa Instalar. Tus cuentas y avisos se conservan.</div></div>`;
+    ${UPD.pct!=null?`<div class="updprog"><div class="small">Descargando… <b id="updpct">${UPD.pct}%</b></div><div class="bar"><i id="updbar" style="width:${UPD.pct}%"></i></div></div>`
+      :UPD.needPerm?`<div class="banner warnb small">Para instalar actualizaciones desde la app, Android necesita tu permiso una sola vez: en la pantalla que se abre, activa <b>Permitir de esta fuente</b> y vuelve aquí.</div>
+        <div class="actions"><button class="btn primary big" data-act="updperm">Dar permiso</button><button class="btn" data-act="updget">Ya lo he dado, instalar</button></div>`
+      :`<div class="actions"><button class="btn primary big" data-act="updget">Actualizar ahora</button></div>
+    ${UPD.dlErr?`<div class="small" style="color:var(--bad,#c0392b)">${esc(UPD.dlErr)} · <a href="#" data-act="updbrowser">descargar con el navegador</a></div>`:`<div class="small muted">Se descarga y se abre el instalador: pulsa Actualizar. Tus cuentas y avisos se conservan.</div>`}`}</div>`;
 }
 function checkDone(){
   const now=Date.now();
@@ -1484,6 +1496,31 @@ function lootHtml(rows, now){
   return `<details class="loot"><summary>Recursos del plan</summary>
     <div class="lsum"><div><div class="acc-label">Próximas 24 h</div><div class="costs">${line(day)}</div></div><div><div class="acc-label">Plan completo</div><div class="costs">${line(tot)}</div></div></div>
     <div class="lsteps">${steps}</div></details>`;
+}
+/* Recursos: cuánto hace falta para el plan, para maxear el nivel y para los muros, y cuánto te falta si dices lo que tienes */
+function resourcesHtml(acc, vil, now){
+  const keys=vil==="bb"?["Builder Gold","Builder Elixir"]:["Gold","Elixir","Dark Elixir"];
+  const add=(o,k,v)=>{ if(v>0&&keys.includes(k)) o[k]=(o[k]||0)+v; };
+  // plan
+  const plan={}, day={};
+  const sim=simulatePlan(acc,vil,now,settings().sleep||{from:0,to:8});
+  for(const r of sim.rows){ if(r.err) continue; const c=CAT[r.p.id]; if(!c) continue; const k=(c.sc&&r.p.from>=c.sc)?(c.scres||c.res):c.res, v=catCost(r.p.id,r.p.from); add(plan,k,v); if(r.start<=now+86400000) add(day,k,v); }
+  // maxear (sin muros)
+  const mx={}; const pg=progress(acc,vil,now); for(const [k,v] of Object.entries(pg.cost||{})) add(mx,k,v);
+  // muros
+  const wl={}; const wid=vil==="bb"?ID_WALL2:ID_WALL, wc=CAT[wid], lim=hallLevel(acc,vil);
+  if(wc&&lim){ let m=0; for(let L=1; L<=wc.c.length; L++){ if((wc.r[L-1]||0)<=lim) m=L; else break; }
+    for(const [l,n] of Object.entries((acc.inv||{})[String(wid)]||{})) for(let x=+l; x<m; x++) add(wl, wc.res||"Gold", catCost(wid,x)*n); }
+  const have=acc.have||{};
+  const rows=[["Próximas 24 h del plan",day],["Plan completo",plan],["Maxear "+VIL[vil].hall.toLowerCase()+" "+(lim||""),mx],["Muros al máximo",wl]].filter(([,o])=>Object.keys(o).length);
+  if(!rows.length) return "";
+  const chip=(o,k)=>{ const v=o[k]||0; if(!v) return ""; const h=have[k]; const falta=h>0?Math.max(0,v-h):null;
+    return `<div class="rchip"><span class="cost">${resIcon(k)}${fmtNum(v)}</span>${falta===null?"":falta?`<span class="small falta">faltan ${fmtNum(falta)}</span>`:`<span class="small okt">lo tienes</span>`}</div>`; };
+  return `<details class="panel" ${S.resOpen?"open":""} data-resd="1"><summary><b>Recursos</b> <span class="muted small">cuánto necesitas${Object.keys(have).some(k=>keys.includes(k)&&have[k]>0)?" y cuánto te falta":""}</span></summary>
+    <div class="havebox"><div class="acc-label" style="margin-bottom:4px">Lo que tienes ahora (opcional)</div><div class="haves">${keys.map(k=>`<label class="have">${resIcon(k)}<input class="haveres" data-acc="${esc(acc._id)}" data-r="${esc(k)}" type="text" inputmode="numeric" placeholder="0" value="${have[k]?esc(Number(have[k]).toLocaleString("es-ES")):""}" aria-label="${esc(RES[k]||k)} que tienes"></label>`).join("")}</div>
+    ${acc.haveAt?`<div class="small muted">Apuntado ${esc(fmtWhen(acc.haveAt))}</div>`:`<div class="small muted">Si pones lo que tienes en los almacenes, te digo cuánto te falta.</div>`}</div>
+    <div class="rlist">${rows.map(([n,o])=>`<div class="rrow"><div class="acc-label">${esc(n)}</div><div class="rchips">${keys.map(k=>chip(o,k)).join("")}</div></div>`).join("")}</div>
+  </details>`;
 }
 function planHtml(acc, vil, now){
   const sl=settings().sleep||{from:0,to:8};
@@ -1651,32 +1688,41 @@ function wallsHtml(acc, vil){
     </div>`).join("")}</div>
   </details>`;
 }
-/* Antes de dormir: para cada trabajador libre, la mejora que mejor cubre la noche */
-function nightHtml(acc, vil, now){
-  const sl=settings().sleep||{from:0,to:8}; if(sl.from===sl.to) return "";
-  // próxima hora de despertarse
-  const wake=new Date(now); wake.setHours(Math.floor(sl.to),Math.round((sl.to%1)*60),0,0); if(wake.getTime()<=now) wake.setDate(wake.getDate()+1);
-  const bed=new Date(wake); bed.setDate(bed.getDate()-(sl.from>sl.to?1:0)); bed.setHours(Math.floor(sl.from),Math.round((sl.from%1)*60),0,0);
-  const toBed=bed.getTime()-now;
-  if(toBed>4*3600000 && !(now>=bed.getTime()&&now<wake.getTime())) return "";   // solo se muestra en las 4 h antes de acostarte
-  const need=wake.getTime()-now;
-  const items=catalogItems(acc,vil).filter(x=>!x.lock&&!x.busy);
+/* Trabajadores libres: qué empezar ahora. Primero lo que acaba con el usuario despierto (según su horario
+   de sueño) y, dentro de eso, lo que aporta en ataque (campamentos, cuarteles, laboratorio, héroes...). */
+const OFF_G={h_arm:1, bb_arm:1, h_her:1, bb_her:1, h_trp2:1, bb_trp2:1, h_spl:1, h_sie:1, h_pet:1};
+function isAsleep(ts, sl){
+  if(!sl || sl.from===sl.to) return false;
+  const d=new Date(ts), h=d.getHours()+d.getMinutes()/60;
+  return sl.from<sl.to ? (h>=sl.from && h<sl.to) : (h>=sl.from || h<sl.to);
+}
+function freeSuggestions(acc, vil, w, now){
+  const sl=settings().sleep||{from:0,to:8};
+  const inPlan=x=>(acc.plan||[]).some(p=>p.id===x.id&&p.from===x.from);
+  const seen=new Set();
+  return catalogItems(acc,vil).filter(x=>!x.lock&&!x.busy&&CAT[x.id]&&CAT[x.id].w===w&&!CAT[x.id].g.endsWith("_wal")).map(x=>{
+    const c=CAT[x.id], d=effDur(acc,x.id,x.from), end=now+d;
+    const off=!!OFF_G[c.g], awake=!isAsleep(end, sl), plan=inPlan(x);
+    const m=maxAt(x.id,hallLevel(acc,vil))||1, behind=x.isNew?1:(m-x.from)/m;
+    return {...x, d, end, off, awake, plan, behind, score:(awake?0:4)+(plan?0:1)+(off?0:2)};
+  }).filter(x=>{ const k=x.id+":"+x.from; if(seen.has(k)||!(x.d>=0)) return false; seen.add(k); return true; })
+    .sort((a,b)=>a.score-b.score || b.behind-a.behind || b.d-a.d);
+}
+function freeHtml(acc, vil, now){
+  const sl=settings().sleep||{from:0,to:8};
   const blocks=VIL[vil].workers.filter(w=>(acc.cap||{})[w]).map(w=>{
     const free=nextFree(acc,w,now); if(!free||!free.free) return "";
-    const cand=items.filter(x=>CAT[x.id].w===w).map(x=>({...x,d:effDur(acc,x.id,x.from)})).filter(x=>x.d>0);
-    if(!cand.length) return "";
-    const fit=cand.filter(x=>x.d>=need).sort((a,b)=>a.d-b.d), short=cand.filter(x=>x.d<need).sort((a,b)=>b.d-a.d);
-    const inPlan=x=>(acc.plan||[]).some(p=>p.id===x.id&&p.from===x.from);
-    const pick=[...fit.filter(inPlan),...fit,...short].filter((x,i,a)=>a.findIndex(y=>y.id===x.id&&y.from===x.from)===i).slice(0,Math.min(3,free.free+1));
+    const pick=freeSuggestions(acc,vil,w,now).slice(0,3);
+    if(!pick.length) return "";
     return `<div><div class="acc-label" style="margin-bottom:4px">${esc(WORKER[w])} · ${free.free} libre${free.free>1?"s":""}</div><div class="list">${pick.map(x=>`<div class="nrow">
       <div class="tile sm">${img(x.id,Math.max(1,x.from))}</div>
-      <div><div class="nm">${esc(CAT[x.id].n)} <span class="lvl">${esc(x.from?stepTxt(x.id,x.from):"Nuevo")}</span></div>
-      <div class="sub">${fmtDur(x.d)} · acaba ${esc(fmtWhen(now+x.d))}${x.d>=need?` · <b class="okt">cubre la noche</b>`:` · <span>acaba antes de despertarte</span>`}${inPlan(x)?" · en tu plan":""}</div></div>
+      <div><div class="nm">${esc(CAT[x.id].n)} <span class="lvl">${esc(x.from?stepTxt(x.id,x.from):"Nuevo")}</span>${x.off?` <span class="tagoff">Ataque</span>`:""}</div>
+      <div class="sub">${fmtDur(x.d)} · acaba ${esc(fmtWhen(x.end))} · ${x.awake?`<b class="okt">estarás despierto</b>`:`<span class="sleept">estarás durmiendo</span>`}${x.plan?" · en tu plan":""}</div></div>
       <button class="btn" data-act="start" data-acc="${esc(acc._id)}" data-id="${x.id}" data-from="${x.from}">Empezar</button></div>`).join("")}</div></div>`;
   }).join("");
   if(!blocks) return "";
-  return `<div class="panel night-sug"><div class="panel-head"><h2>Antes de dormir</h2><span class="muted small">Te levantas ${esc(fmtWhen(wake.getTime()))}</span></div>
-    <div class="small muted">Mejoras que duran al menos hasta que te levantes, para que nadie se quede parado por la noche.</div>${blocks}</div>`;
+  return `<div class="panel night-sug"><div class="panel-head"><h2>Qué empezar ahora</h2>${sl.from!==sl.to?`<span class="muted small">Duermes de ${esc(hhmm(sl.from))} a ${esc(hhmm(sl.to))}</span>`:""}</div>
+    <div class="small muted">Primero lo que acaba cuando estés despierto y, de eso, lo que mejora tu ataque.</div>${blocks}</div>`;
 }
 function magicHtml(acc, vil, now){
   if(vil!=="h") return "";
@@ -1740,11 +1786,12 @@ function renderAcc(acc, now){
     <div class="panel-head"><h2>En curso</h2><span class="muted small">${esc(VIL[vil].name)}</span></div>
     ${upsTabsHtml(acc._id+":"+vil, vil, ups.map(u=>[acc,u]), now, false, acc)}
   </div>
+  ${freeHtml(acc,vil,now)}
   ${catalogHtml(acc,vil)}
   ${vil==="h"?equipmentHtml(acc):""}
-  ${nightHtml(acc,vil,now)}
   ${magicHtml(acc,vil,now)}
   ${planHtml(acc,vil,now)}
+  ${resourcesHtml(acc,vil,now)}
   ${progressHtml(acc,vil,now)}
   ${wallsHtml(acc,vil)}
   ${Object.keys(acc.inv||{}).length?"":accSettings(acc)}`;
@@ -1979,6 +2026,7 @@ setInterval(()=>{
 },1000);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden && S.ready){ checkDone(); render(); } });
 if(!NATIVE) setInterval(wnTick, 20000);
+document.addEventListener("toggle", e=>{ const d=e.target; if(d&&d.dataset&&d.dataset.resd) S.resOpen=d.open; }, true);
 document.addEventListener("click",ev=>{
   const el=ev.target.closest("[data-act]"); if(!el) return;
   const act=el.dataset.act;
@@ -2185,9 +2233,26 @@ document.addEventListener("click",ev=>{
   if(act==="updcheck"){ checkUpdate(true); return; }
   if(act==="updget"){
     if(!UPD.url) return;
+    const U=updPlugin();
+    if(NATIVE && U && /\.apk$/i.test(UPD.url)){
+      (async()=>{
+        let l=null;
+        try{
+          const c=await U.canInstall();
+          if(!c||!c.value){ UPD.needPerm=true; render(); return; }
+          UPD.needPerm=false; UPD.dlErr=null; UPD.pct=0; render();
+          l=await U.addListener("progress", e=>{ UPD.pct=e.pct; const t=document.getElementById("updpct"), b=document.getElementById("updbar"); if(t) t.textContent=e.pct+"%"; if(b) b.style.width=e.pct+"%"; });
+          await U.downloadAndInstall({url:UPD.url});
+        }catch(e){ UPD.dlErr="No se pudo descargar ("+String(e&&e.message||e)+")"; }
+        finally{ if(l&&l.remove) l.remove(); UPD.pct=null; render(); }
+      })();
+      return;
+    }
     if(P.Browser) P.Browser.open({url:UPD.url}); else window.open(UPD.url,"_system");
     return;
   }
+  if(act==="updperm"){ const U=updPlugin(); if(U) U.openInstallSettings().catch(()=>{}); return; }
+  if(act==="updbrowser"){ ev.preventDefault&&ev.preventDefault(); if(P.Browser) P.Browser.open({url:UPD.url}); else window.open(UPD.url,"_system"); return; }
   if(act==="nperm"){ (async()=>{ try{ const p=await P.LocalNotifications.requestPermissions(); NOTIF.perm=p.display; }catch(e){} render(); syncNotifications(); })(); return; }
   if(act==="nexact"){ (async()=>{ try{ await P.LocalNotifications.changeExactNotificationSetting(); const x=await P.LocalNotifications.checkExactNotificationSetting(); NOTIF.exact=x.exact_alarm; }catch(e){} render(); })(); return; }
   if(act==="ntest"){ testNotification(); return; }
@@ -2289,6 +2354,12 @@ document.addEventListener("input",ev=>{
 });
 document.addEventListener("change",ev=>{
   const t=ev.target;
+  if(t.classList && t.classList.contains("haveres")){
+    const acc=accounts().find(a=>a._id===t.dataset.acc); if(!acc) return;
+    const n=+String(t.value||"").replace(/[^\d]/g,"")||0, have={...(acc.have||{})};
+    if(n>0) have[t.dataset.r]=n; else delete have[t.dataset.r];
+    S.resOpen=true; saveAcc({...acc, have, haveAt:Date.now()}); return;
+  }
   if(t.classList && t.classList.contains("sumlist")){ save("settings", {...settings(), sumList:t.checked}); toast(t.checked?"El Resumen mostrará las mejoras en curso.":"El Resumen ya no muestra las mejoras en curso."); return; }
   if(t.dataset && t.dataset.boost){
     const acc=accounts().find(a=>a._id===t.dataset.acc); if(!acc) return;
