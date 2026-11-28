@@ -2,6 +2,9 @@
 
 <!-- La versión más nueva arriba. Cambios pequeños: 1.2, 1.3…  Cambios gordos: 2.0 -->
 
+## v1.18 — 28/11/2026
+- Modo oscuro: Ajustes → Modo oscuro (Claro, Oscuro o Como el sistema). La aldea principal pasa a una madera oscura; la base del constructor sigue en su azul noche.
+
 ## v1.17 — 28/11/2026
 - "Qué empezar ahora": para cada trabajador libre, las mejoras que acaban cuando estás despierto (según tu horario de sueño) y, de esas, primero las de ataque (campamentos, cuarteles, laboratorio, héroes, hechizos...).
 - Panel de Recursos: oro, elixir y elixir oscuro que necesitas para el plan, para maxear el ayuntamiento y para los muros. Si apuntas lo que tienes, te dice cuánto te falta.

@@ -391,6 +391,21 @@ body.wood,body.night{background:var(--bg)}
 .night .panel{background:var(--surface)}
 .night .up,.night .item,.night .prow{background:var(--raise)}
 .night .tile{background:#0e1426;border-color:#2a3a66}
+/* Modo oscuro de la aldea principal: la misma madera, pero de noche */
+.wood.dark{
+  --bg:#140d07; --page-ink:#f0dfc0; --page-muted:#a98d66;
+  --surface:#2a1d12; --raise:#35261a; --ink:#f0dfc0; --muted:#b89c76; --line:#4d3825; --panel-edge:#5a4129;
+  --gold:#f2b630; --gold-ink:#f6cc6a; --gold-soft:#45320f; --elixir:#c08af2; --elixir-edge:#7d43b8; --elixir-soft:#33204a; --night:#7fa8ec; --night-soft:#1f2c48;
+  --ok:#7bcf55; --ok-soft:#1e3315; --warn:#f0a35b; --warn-soft:#3d2812; --bad:#ff8a80;
+  --primary-bg:#5aa830; --primary-edge:#356b17; --primary-ink:#ffffff;
+  --tab-bg:#2a1d12; --tab-ink:#d9c39b; --tab-edge:#0d0804; --tab-on-bg:#f2b630; --tab-on-ink:#2a1d12; --tab-on-edge:#a06d10;
+  --cd-ink:#f6cc6a; color-scheme:dark;
+}
+.wood.dark .tile{background:#3d2c1c;border-color:#5a4129}
+.wood.dark .bar{background:#4a3825}
+.wood.dark .lvl{background:#45320f;border-color:#8a6418;color:#f6cc6a}
+.wood.dark .wk.free,.wood.dark .hp.ready{background:#1e3315}
+.wood.dark input,.wood.dark select,.wood.dark textarea,.night input,.night select,.night textarea{background:var(--raise);color:var(--ink);border-color:var(--line)}
 </style>
 </head>
 <body class="wood">
@@ -1227,6 +1242,16 @@ function plannedNotifications(now){
 }
 let syncing=false, syncAgain=false;
 /* Widgets de la pantalla de inicio: la app deja un resumen y el widget nativo lo pinta */
+/* Modo oscuro: por dispositivo (no se sincroniza). "auto" sigue el modo del sistema */
+function darkPref(){ try{ return localStorage.getItem("theme-mode")||"light"; }catch(e){ return "light"; } }
+function darkOn(){ const m=darkPref(); return m==="dark" || (m==="auto" && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches); }
+if(window.matchMedia) try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ()=>{ if(darkPref()==="auto") render(); }); }catch(e){}
+function themePanel(){
+  const m=darkPref(), o=(v,t)=>`<button class="btn ${m===v?"primary":""}" data-act="thememode" data-v="${v}" aria-pressed="${m===v}">${t}</button>`;
+  return `<details class="panel"><summary>Modo oscuro</summary>
+    <div class="actions" role="group" aria-label="Modo de color">${o("light","Claro")}${o("dark","Oscuro")}${o("auto","Como el sistema")}</div>
+    <div class="small muted">Se guarda en este dispositivo. La base del constructor ya es oscura siempre.</div></details>`;
+}
 function updPlugin(){ const C=window.Capacitor||{}; return (C.Plugins&&C.Plugins.ClashUpdate) || (C.registerPlugin?C.registerPlugin("ClashUpdate"):null); }
 function widgetPlugin(){ const C=window.Capacitor||{}; return (C.Plugins&&C.Plugins.ClashWidget) || (C.registerPlugin?C.registerPlugin("ClashWidget"):null); }
 function widgetPayload(now){
@@ -1873,6 +1898,7 @@ function renderSettings(){
   const accs=accounts();
   return `${accs.length?`<div class="acc-label" style="margin:4px 0 6px">Cuentas · importar JSON del juego</div>${accs.map(a=>accSettings(a)).join("")}`:""}
   <div class="acc-label" style="margin:14px 0 6px">General</div>
+  ${themePanel()}
   ${settingsPanel()}`;
 }
 function accSettings(acc){
@@ -1965,7 +1991,8 @@ function onboarding(){
 function render(){
   const app=document.getElementById("app");
   const theme=(S.view!=="all"&&S.view!=="new"&&S.view!=="settings"&&S.vil==="bb")?"night":"wood";
-  if(document.body.className!==theme) document.body.className=theme;
+  const cls=theme+(theme==="wood"&&darkOn()?" dark":"");
+  if(document.body.className!==cls){ document.body.className=cls; const m=document.querySelector('meta[name="theme-color"]'); if(m) m.content=cls==="wood"?"#3b2a1a":cls==="night"?"#0b1020":"#140d07"; }
   if(!S.ready) return;
   const now=Date.now(), accs=accounts();
   if(S.view!=="all" && S.view!=="new" && S.view!=="settings" && !curAcc()) S.view="all";
@@ -2085,6 +2112,7 @@ document.addEventListener("click",ev=>{
     toast(act==="avready"?`${name}: disponible.`:`${name}: disponible ${fmtWhen(at)}.`);
     return;
   }
+  if(act==="thememode"){ try{ localStorage.setItem("theme-mode", el.dataset.v); }catch(e){} render(); return; }
   if(act==="gobswap"){ gobSwap(el.dataset.acc, el.dataset.u); return; }
   if(act==="start"){
     // Se empieza al momento con el tiempo del juego; si hace falta, se cambia luego con "Ajustar tiempo"
